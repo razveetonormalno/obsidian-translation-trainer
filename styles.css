@@ -1,8 +1,92 @@
-/*
-
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
-*/
+.translation-trainer-modal { max-width: 760px; padding-bottom: .25rem; }
+.translation-trainer-modal > h2 { margin-bottom: .65rem; }
+.translation-trainer-source { font-size: 1.15em; font-weight: 600; line-height: 1.55; margin: .45rem 0; }
+.translation-trainer-meta { color: var(--text-muted); font-size: var(--font-ui-small); margin: .35em 0; }
+.translation-trainer-reveals { display: flex; flex-wrap: wrap; gap: .5rem; margin: .85rem 0 .5rem; }
+.translation-trainer-reveals button { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.translation-trainer-hint-panel { background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); margin: .5rem 0; padding: .65rem .8rem; }
+.translation-trainer-answer { box-sizing: border-box; display: block; line-height: 1.55; margin: 1em 0; min-height: 8rem; padding: .75rem; resize: vertical; width: 100%; }
+.translation-trainer-controls, .translation-trainer-filters { display: flex; flex-wrap: wrap; gap: .6em; margin: 1.15em 0 .5em; }
+.translation-trainer-interactive-button { --translation-trainer-tilt-x: 0deg; --translation-trainer-tilt-y: 0deg; transform: perspective(420px) translateY(0) scale(1) rotateX(0) rotateY(0); transform-origin: center; transition: box-shadow 160ms ease, filter 160ms ease, transform 160ms cubic-bezier(.2, .8, .2, 1); will-change: transform; }
+.translation-trainer-evaluating { color: var(--text-accent); animation: translation-trainer-pulse 1.2s ease-in-out infinite; }
+.translation-trainer-result-header { align-items: center; border-bottom: 1px solid var(--background-modifier-border); display: flex; gap: 1rem; margin: 1.25rem 0 1rem; padding-bottom: 1rem; }
+.translation-trainer-result-header h3 { margin: 0 0 .2rem; }
+.translation-trainer-result-caption { color: var(--text-muted); line-height: 1.45; margin: 0; }
+.translation-trainer-overall-score { align-items: baseline; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 50%; display: flex; flex: 0 0 auto; height: 4.6rem; justify-content: center; width: 4.6rem; }
+.translation-trainer-overall-score.is-good { border-color: var(--color-green); }
+.translation-trainer-overall-score.is-medium { border-color: var(--color-yellow); }
+.translation-trainer-overall-score.is-low { border-color: var(--color-red); }
+.translation-trainer-overall-value { font-size: 1.55rem; font-weight: 700; }
+.translation-trainer-overall-total { color: var(--text-muted); font-size: .72rem; }
+.translation-trainer-score-grid { display: grid; gap: .65rem; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 1rem; }
+.translation-trainer-score-card { background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); padding: .7rem; }
+.translation-trainer-score-topline { align-items: baseline; display: flex; font-size: var(--font-ui-smaller); justify-content: space-between; margin-bottom: .55rem; }
+.translation-trainer-score-topline strong { font-size: var(--font-ui-medium); }
+.translation-trainer-score-track { background: var(--background-modifier-border); border-radius: 999px; height: 4px; overflow: hidden; }
+.translation-trainer-score-fill { background: var(--interactive-accent); border-radius: inherit; height: 100%; width: var(--translation-trainer-score); }
+.translation-trainer-score-fill.is-good { background: var(--color-green); }
+.translation-trainer-score-fill.is-medium { background: var(--color-yellow); }
+.translation-trainer-score-fill.is-low { background: var(--color-red); }
+.translation-trainer-result-card { background: var(--background-primary-alt); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-l); margin: .75rem 0; padding: .9rem 1rem; }
+.translation-trainer-card-title { color: var(--text-muted); font-size: var(--font-ui-small); font-weight: 650; letter-spacing: .015em; margin: 0 0 .65rem; }
+.translation-trainer-card-lead { font-size: 1.02em; line-height: 1.55; margin: 0; }
+.translation-trainer-criterion-notes { border-top: 1px solid var(--background-modifier-border); display: grid; gap: .5rem; margin-top: .8rem; padding-top: .75rem; }
+.translation-trainer-criterion-note { display: grid; gap: .12rem; grid-template-columns: minmax(7.5rem, .35fr) 1fr; line-height: 1.45; }
+.translation-trainer-criterion-note strong { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.translation-trainer-answer-grid { display: grid; gap: .75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.translation-trainer-answer-grid .translation-trainer-result-card { margin: 0; }
+.translation-trainer-user-answer-card { border-left: 3px solid var(--text-muted); }
+.translation-trainer-corrected-card { border-left: 3px solid var(--color-green); }
+.translation-trainer-answer-text { line-height: 1.55; margin: 0; white-space: pre-wrap; }
+.translation-trainer-alternatives { display: grid; gap: .45rem; margin: 0; padding-left: 1.25rem; }
+.translation-trainer-alternatives li { line-height: 1.5; padding-left: .2rem; }
+.translation-trainer-error-list { display: grid; gap: .65rem; }
+.translation-trainer-error-item { background: var(--background-secondary); border-left: 3px solid var(--text-muted); border-radius: 0 var(--radius-m) var(--radius-m) 0; padding: .7rem .8rem; }
+.translation-trainer-error-item.is-major { border-left-color: var(--color-orange); }
+.translation-trainer-error-item.is-critical { border-left-color: var(--color-red); }
+.translation-trainer-error-heading { align-items: center; display: flex; gap: .45rem; margin-bottom: .45rem; }
+.translation-trainer-error-category, .translation-trainer-error-severity { border-radius: 999px; font-size: var(--font-ui-smaller); padding: .15rem .45rem; }
+.translation-trainer-error-category { background: var(--background-modifier-hover); color: var(--text-muted); }
+.translation-trainer-error-severity { color: var(--text-faint); }
+.translation-trainer-error-fragment { font-weight: 650; margin: .2rem 0; }
+.translation-trainer-error-explanation { line-height: 1.5; margin: .3rem 0; }
+.translation-trainer-replacement { color: var(--text-muted); margin-top: .45rem; }
+.translation-trainer-replacement strong { color: var(--text-normal); }
+.translation-trainer-success-note { color: var(--color-green); margin: 0; }
+.translation-trainer-statistics { overflow-x: hidden; padding: 0 8px; }
+.translation-trainer-chart { display: block; height: auto; max-width: 100%; margin-bottom: .35em; }
+.translation-trainer-legend::before { background: var(--series-color); border-radius: 50%; content: ''; display: inline-block; height: .7em; margin: 0 .3em .05em .8em; width: .7em; }
+.translation-trainer-topic-bars { display: grid; gap: .5em; }
+.translation-trainer-topic-bar { align-items: center; display: grid; gap: .5em; grid-template-columns: minmax(120px, 1fr) minmax(80px, 3fr) auto; text-align: left; width: 100%; }
+.translation-trainer-topic-fill { border-radius: var(--radius-s); display: block; height: .8em; min-width: 2px; }
+.translation-trainer-ranking, .translation-trainer-accessible-table { border-collapse: collapse; margin: .5em 0 1.5em; width: 100%; }
+.translation-trainer-ranking th, .translation-trainer-ranking td, .translation-trainer-accessible-table th, .translation-trainer-accessible-table td { border-bottom: 1px solid var(--background-modifier-border); padding: .4em; text-align: left; }
+.translation-trainer-accessible-table { font-size: .85em; }
+.translation-trainer-empty { color: var(--text-muted); padding: 2em 0; text-align: center; }
+.translation-trainer-drilldown { border-top: 1px solid var(--background-modifier-border); margin-top: 2em; }
+.translation-trainer-filters .is-active { background: var(--interactive-accent); color: var(--text-on-accent); }
+.translation-trainer-diagnostics { max-height: 24em; overflow: auto; }
+@keyframes translation-trainer-pulse { 50% { opacity: .45; } }
+@media (hover: hover) and (pointer: fine) {
+	.translation-trainer-interactive-button:hover:not(:disabled) {
+		box-shadow: 0 5px 12px rgb(0 0 0 / 12%);
+		filter: brightness(1.03);
+		transform: perspective(420px) translateY(-2px) scale(1.035) rotateX(var(--translation-trainer-tilt-x)) rotateY(var(--translation-trainer-tilt-y));
+	}
+}
+@media (max-width: 640px) {
+	.translation-trainer-score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.translation-trainer-answer-grid { grid-template-columns: 1fr; }
+	.translation-trainer-criterion-note { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+	.translation-trainer-result-header { align-items: flex-start; }
+	.translation-trainer-overall-score { height: 4rem; width: 4rem; }
+	.translation-trainer-topic-bar { grid-template-columns: 1fr auto; }
+	.translation-trainer-topic-fill { grid-column: 1 / -1; }
+	.translation-trainer-accessible-table { display: block; overflow-x: auto; white-space: nowrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.translation-trainer-evaluating { animation: none; }
+	.translation-trainer-interactive-button, .translation-trainer-interactive-button:hover:not(:disabled) { transform: none; transition: none; }
+}
