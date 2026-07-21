@@ -1,11 +1,9 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.0",
-	"minAppVersion": "1.0.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"id": "obsidian-translation-trainer",
+	"name": "Translation Trainer",
+	"version": "0.1.0",
+	"minAppVersion": "1.11.4",
+	"description": "Adaptive Russian-to-English translation practice with LLM feedback and statistics.",
+	"author": "Maxim",
 	"isDesktopOnly": false
 }

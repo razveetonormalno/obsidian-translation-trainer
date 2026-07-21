@@ -29,4 +29,17 @@ export default defineConfig(
 		},
 	},
 	...obsidianmd.configs.recommended,
+	{
+		files: ['tests/**/*.ts', 'vitest.config.ts'],
+		rules: {
+			'obsidianmd/no-nodejs-modules': 'off',
+		},
+	},
+	{
+		files: ['src/settings/settings-tab.ts'],
+		rules: {
+			// The searchable declarative settings API is not available at minAppVersion 1.11.4.
+			'obsidianmd/settings-tab/prefer-setting-definitions': 'off',
+		},
+	},
 );
