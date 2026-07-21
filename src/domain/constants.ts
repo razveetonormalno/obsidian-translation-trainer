@@ -1,0 +1,15 @@
+export const CURRENT_DATA_SCHEMA_VERSION = 1;
+export const QUESTION_SCHEMA_VERSION = 1;
+export const ATTEMPT_SCHEMA_VERSION = 1;
+export const GENERATE_QUESTION_PROMPT_VERSION = 1;
+export const EVALUATE_ANSWER_PROMPT_VERSION = 1;
+export const EMA_ALPHA = 0.2;
+export const RECENT_QUESTION_LIMIT = 20;
+export const SNOOZE_MINUTES = 30;
+export const STATISTICS_MIN_SAMPLE = 3;
+export const API_KEY_SECRET_ID = 'obsidian-translation-trainer-api-key';
+
+export const SERVICE_DIRECTORY = '.translation-trainer';
+export const QUESTION_BANK_DIRECTORY = `${SERVICE_DIRECTORY}/question-banks`;
+export const ATTEMPTS_DIRECTORY = `${SERVICE_DIRECTORY}/attempts`;
+export const EXPORTS_DIRECTORY = `${SERVICE_DIRECTORY}/exports`;
