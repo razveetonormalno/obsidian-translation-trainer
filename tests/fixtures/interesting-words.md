@@ -1,0 +1,117 @@
+Last card word: **Stunning**
+
+- **Roundabout** – обходной
+> "Although this may appear to be a **roundabout** way"
+> Контекст после записи.
+
+* **Purpose** — цель
+- **Suggest** - предлагать
+- **Leverage** – использовать
+- **Abundance** — изобилие
+- **Safe and sound** – в целости и сохранности
+* **corresponding** — соответствующий
+* **approach** — подход
+- **conditional** — условный
+- **Starvation** — голод
+- **Barely** — едва
+- **Holds** — держит
+- **Ruler** — правитель
+- **found out** — узнал
+- **Write down** — записать
+- **Crucial** — важный
+- **Suffice** — быть достаточным
+- **Row** — ряд
+- **Aftermath** — последствия
+- **Questioning** — сомнение
+- **Burden** — бремя
+- **Solemn** — торжественный
+- **Sweat** — пот
+- **Cull** — отбраковывать
+- **Shame** — стыд
+- **Cut down** — сократить
+- **Likely** — вероятно
+- **Reciprocation** — взаимность
+- **Reach** — достигать
+- **Reaching out** — обращаться
+- **Postpone** — откладывать
+- **I wouldn't say no** — не отказался бы
+- **I wouldn't mind** — не возражал бы
+- **That would be nice** — было бы здорово
+- **I'm down** — я согласен
+- **Exhausted** — измотанный
+- **Tire** — утомлять
+- **Spare** — щадить
+- **Vicious** — жестокий
+- **Sightseeing** — осмотр достопримечательностей
+- **Lack** — недостаток
+- **Conquer** — покорять
+- **Recklessly** — безрассудно
+- **Rashly** — опрометчиво
+- **Agile** — ловкий
+- **Interceptor** — перехватчик
+- **Housed** — размещённый
+- **Dogfight** — воздушный бой
+- **Manoeuvrability** — манёвренность
+- **Threats** — угрозы
+- **Denial** — отрицание
+- **Combating** — борьба
+- **Seamless** — плавный
+- **Towards** — к
+- **Unmanned** — беспилотный
+- **Constraint-heavy** — ограниченный
+- **Mother him** — опекать его
+- **Wistful** — тоскливый
+- **Frisson** — трепет
+- **Veil** — вуаль
+- **Yearning** — тоска
+- **Panache** — стиль
+- **Sage** — мудрец
+- **Furious** — яростный
+- **Tiny** — крошечный
+- **Hilarious** — уморительный
+- **Amazed** — поражённый
+- **Fascinating** — увлекательный
+- **Starving** — голодный
+- **Terrifying** — ужасающий
+- **Delighted** — восхищённый
+- **To be positive** — быть позитивным
+- **Huge** — огромный
+- **Filthy** — грязный
+- **Boiled** — варёный
+- **Lovey-dovey** — сюсюкающий
+- **Advantage** — преимущество
+- **Completely** — полностью
+- **Longing** — тоска
+- **Craving** — тяга
+- **Desire** — желание
+- **Bother** — беспокоить
+- **Bother!!** — надоедать
+- **Exclamation** — восклицание
+- **Gunslinger** — стрелок
+- **Shudder** — содрогаться
+- **Higgledy-piggledy** — беспорядочный
+- **Willy-nilly** — как попало
+- **Wishy-washy** — нерешительный
+- **Likewise** — аналогично
+- **Awkward** — неловкий
+- **Performed my chores** — сделал дела
+- **Newsworthy** — заслуживающий новостей
+- **Errand** — поручение
+- **Run errands** — выполнять поручения
+- **Astonishing** — удивительный
+- **Gleamed** — блеснул
+- **You've got to [do something]** — нужно
+- **Stay-at-home mom** — домохозяйка
+- **Hectic** — суматошный
+- **Willing** — готовый
+- **Let's get this over with** — покончим с этим
+- **Confront** — противостоять
+- **Philanderer** — бабник
+- **Suddenly** — внезапно
+- **Tiptoeing** — крадучись
+- **Mileage** — пробег
+- **Grown-up** — взрослый
+- **Bum** — бездельник
+- **Stunning** — потрясающий
+
+- **purpose** — дубликат с другим регистром
