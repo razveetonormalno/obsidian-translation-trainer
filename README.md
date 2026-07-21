@@ -1,92 +1,52 @@
-# Obsidian Sample Plugin
+# Translation Trainer
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+Плагин Obsidian для практики перевода с русского на английский. Он читает словарь из заметки, выбирает материал с учётом ошибок, показывает задание, проверяет ответ через выбранный OpenAI-compatible LLM endpoint и планирует следующее повторение автоматически.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## Установка и сборка
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
+В папке плагина выполните:
 
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and outputs a Notice on click.
-- Registers a global interval which logs 'setInterval' to the console.
-
-## First time developing plugins?
-
-Quick starting guide for new plugin devs:
-
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `src/main.ts` to `main.js`.
-- Make changes to `src/main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
-
-## Releasing new releases
-
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
-
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
-
-## Adding your plugin to the community plugin list
-
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
-
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v18 (`node --version`).
-- `npm i` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint
-
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code.
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-	"fundingUrl": "https://buymeacoffee.com"
-}
+```powershell
+npm install
+npm run build
 ```
 
-If you have multiple URLs, you can also do:
+Для разработки используйте `npm run dev`, для тестов — `npm run test`, для проверки стиля — `npm run lint`. В папке плагина вашего vault должны находиться `manifest.json`, `main.js` и `styles.css`; затем включите плагин в **Settings → Community plugins**.
 
-```json
-{
-	"fundingUrl": {
-		"Buy Me a Coffee": "https://buymeacoffee.com",
-		"GitHub Sponsor": "https://github.com/sponsors",
-		"Patreon": "https://www.patreon.com/"
-	}
-}
-```
+## Первоначальная настройка
 
-## API Documentation
+По умолчанию плагин использует уровень B1. Заметку со словами нужно выбрать в настройках. В **Settings → Translation Trainer** можно изменить путь или секцию заметки, CEFR, режим расписания, часы тишины, интервалы и дневной лимит, URL endpoint, модель, таймаут и API key. Там же доступны проверка подключения, переиндексация слов и диагностика распознанного словаря.
 
-See https://docs.obsidian.md
+Стандартный endpoint — `http://127.0.0.1:8080/v1`, модель — `qwen3-8b`. API key не записывается в настройки плагина: он хранится в Obsidian `SecretStorage` под отдельным идентификатором. Если установлен локальный сервер без ключа, поле можно оставить пустым.
+
+## Команды
+
+Нажмите `Ctrl+P`, чтобы открыть стандартную Command Palette Obsidian, затем найдите одну из команд:
+
+- **Translation Trainer: Начать упражнение сейчас** — немедленно открыть следующее допустимое задание.
+- **Translation Trainer: Открыть сессию повторения** — открыть последовательную сессию повторения.
+- **Translation Trainer: Открыть статистику** — открыть вкладку со статистикой и графиками.
+- **Translation Trainer: Приостановить или возобновить упражнения** — поставить/снять паузу автоматического показа.
+- **Translation Trainer: Переиндексировать словарь** — повторно прочитать заметку со словами.
+
+Плагин не перехватывает глобальные горячие клавиши: `Ctrl+P` всегда остаётся командной палитрой Obsidian.
+
+## Повторения и статистика
+
+Интервал определяется по оценке модели и критическим/значительным ошибкам: от 10–30 минут при серьёзной проблеме с смыслом до 1/3 дней и последовательности 7, 14, 30, 60, 90 дней при успешных ответах. **Отложить** переносит вопрос на 30 минут и не создаёт попытку.
+
+Автоматический показ учитывает паузу, активность приложения, часы тишины (включая переход через полночь), cadence, минимальный интервал и дневной лимит. Ручной запуск обходит эти временные ограничения, но не откроет второе окно и уважает текущую отсрочку вопроса.
+
+В Statistics View доступны периоды 7/30/90 дней или всё время, распределение попыток по темам, графики общего score и четырёх критериев, топ-10 лёгких/сложных слов и тем. В рейтинги попадают только элементы с минимум тремя попытками; клик по слову или теме показывает связанные попытки.
+
+## Данные
+
+Локальные служебные данные расположены внутри vault:
+
+- `.translation-trainer/question-banks/*.jsonl` — встроенные, импортированные и сгенерированные задания;
+- `.translation-trainer/attempts/YYYY-MM.jsonl` — попытки, источник истины для статистики;
+- данные настроек и прогресса — стандартное хранилище данных плагина Obsidian.
+
+## Ограничения v0.1.0
+
+Нет профилей, синхронизации между vault, автоматического fallback API, адаптивного изменения CEFR и тематических уроков. Качество проверки зависит от выбранной модели: плагин валидирует структурированный ответ и показывает технические ошибки через стандартное уведомление Obsidian, но не заменяет самостоятельную языковую проверку.
