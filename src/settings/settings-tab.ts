@@ -1,6 +1,6 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import type { CefrLevel } from '../domain/types';
-import type { SchedulerMode, TranslationTrainerSettings } from './model';
+import { MAX_EXERCISE_MODAL_WIDTH, MIN_EXERCISE_MODAL_WIDTH, type SchedulerMode, type TranslationTrainerSettings } from './model';
 import { ErrorReporter } from '../ui/error-reporter';
 
 export interface SettingsTabActions {
@@ -31,6 +31,16 @@ export class TranslationTrainerSettingsTab extends PluginSettingTab {
 		this.text('Конец тихих часов', 'Например, 09:00.', settings.quietHoursEnd, async value => this.updateText('quietHoursEnd', value));
 		this.text('Дневной лимит', 'Максимум автоматических заданий в день.', settings.dailyAutomaticLimit, async value => this.updateNumber('dailyAutomaticLimit', value));
 		new Setting(containerEl).setName('Режим показа').setDesc('Active показывает задания только при активном Obsidian.').addDropdown(dropdown => dropdown.addOption('active', 'Только активный').addOption('background', 'В фоне').setValue(settings.schedulerMode).onChange(value => this.run(() => this.actions.update({ schedulerMode: value as SchedulerMode }))));
+
+		new Setting(containerEl).setName('Интерфейс').setHeading();
+		new Setting(containerEl)
+			.setName('Ширина окна упражнения')
+			.setDesc('Ширина окна в пикселях. На небольшом экране она автоматически уменьшается.')
+			.addSlider(slider => slider
+				.setLimits(MIN_EXERCISE_MODAL_WIDTH, MAX_EXERCISE_MODAL_WIDTH, 20)
+				.setValue(settings.exerciseModalWidth)
+				.setDynamicTooltip()
+				.onChange(value => this.run(() => this.actions.update({ exerciseModalWidth: value }))));
 
 		new Setting(containerEl).setName('Словарь и уровень').setHeading();
 		this.text('Файл со словами', 'Путь внутри vault.', settings.vocabularyPath, value => this.updateText('vocabularyPath', value));

@@ -204,6 +204,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 			this.app,
 			sessionMode ? 'Готовим сессию повторения…' : 'Готовим задание…',
 			() => { cancelled = true; },
+			this.data.settings.exerciseModalWidth,
 		);
 		loading.open();
 		try {
@@ -225,6 +226,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 			new TranslationModal(this.app, {
 				question,
 				sessionMode,
+				widthPx: this.data.settings.exerciseModalWidth,
 				reporter: this.reporter,
 				actions: {
 					evaluate: (current, answer, hintUsed, responseTimeMs) => this.evaluateAnswer(current, answer, hintUsed, responseTimeMs),

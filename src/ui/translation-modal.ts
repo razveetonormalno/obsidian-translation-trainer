@@ -3,6 +3,7 @@ import type { TranslationEvaluation, TranslationQuestion } from '../domain/types
 import { enhanceButtonMotion } from './button-motion';
 import { ErrorReporter } from './error-reporter';
 import { renderTranslationResult } from './result-view';
+import { createTokenStream, type TokenStreamAnimation } from './token-stream';
 
 export interface TranslationModalActions {
 	evaluate(question: TranslationQuestion, answer: string, hintUsed: boolean, responseTimeMs: number): Promise<TranslationEvaluation>;
@@ -15,6 +16,7 @@ export interface TranslationModalOptions {
 	question: TranslationQuestion;
 	actions: TranslationModalActions;
 	reporter: ErrorReporter;
+	widthPx: number;
 	sessionMode?: boolean;
 }
 
@@ -27,20 +29,19 @@ export class TranslationModal extends Modal {
 	private showTopics = false;
 	private showVocabulary = false;
 	private shownAt = Date.now();
-	private pseudoWordTimer?: number;
-	private pseudoWordIndex = 0;
-	private readonly pseudoWords = ['mira', 'tavo', 'neli', 'sora', 'vemi'];
+	private tokenStream?: TokenStreamAnimation;
 
 	constructor(app: App, private readonly options: TranslationModalOptions) {
 		super(app);
 		this.question = options.question;
 	}
 
-	onOpen(): void { this.render(); }
-	onClose(): void { this.stopPseudoWords(); this.options.actions.onClose?.(); }
+	onOpen(): void { applyModalWidth(this.modalEl, this.options.widthPx); this.render(); }
+	onClose(): void { this.stopTokenStream(); this.options.actions.onClose?.(); }
 
 	private render(): void {
 		const { contentEl } = this;
+		this.stopTokenStream();
 		contentEl.empty();
 		contentEl.addClass('translation-trainer-modal');
 		contentEl.createEl('h2', { text: 'Перевод на английский' });
@@ -71,9 +72,7 @@ export class TranslationModal extends Modal {
 		snooze.disabled = this.submitting;
 		snooze.addEventListener('click', () => void this.snooze());
 		if (this.submitting) {
-			const status = contentEl.createEl('p', { text: 'Проверяем перевод…', cls: 'translation-trainer-evaluating', attr: { 'aria-live': 'polite' } });
-			const token = status.createSpan({ text: ` ${this.pseudoWords[this.pseudoWordIndex] ?? ''}`, cls: 'translation-trainer-pseudo-word' });
-			this.startPseudoWords(token);
+			this.tokenStream = createTokenStream(contentEl, 'Проверяем перевод');
 		}
 		if (this.technicalDetails) {
 			const details = contentEl.createEl('details', { cls: 'translation-trainer-diagnostics' });
@@ -94,7 +93,7 @@ export class TranslationModal extends Modal {
 			this.options.reporter.report(error, 'Не удалось проверить перевод. Текст ответа сохранён.');
 			this.technicalDetails = this.options.reporter.diagnostics(error);
 		} finally {
-			this.submitting = false; this.stopPseudoWords();
+			this.submitting = false; this.stopTokenStream();
 			this.render();
 		}
 	}
@@ -127,25 +126,20 @@ export class TranslationModal extends Modal {
 		finally { this.submitting = false; if (this.modalEl.isConnected) this.render(); }
 	}
 
-	private startPseudoWords(token: HTMLElement): void {
-		this.stopPseudoWords();
-		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-		this.pseudoWordTimer = window.setInterval(() => {
-			this.pseudoWordIndex = (this.pseudoWordIndex + 1) % this.pseudoWords.length;
-			token.setText(` ${this.pseudoWords[this.pseudoWordIndex] ?? ''}`);
-		}, 120);
-	}
-
-	private stopPseudoWords(): void { if (this.pseudoWordTimer !== undefined) { window.clearInterval(this.pseudoWordTimer); this.pseudoWordTimer = undefined; } }
+	private stopTokenStream(): void { this.tokenStream?.stop(); this.tokenStream = undefined; }
 }
 
 export class LoadingModal extends Modal {
-	private timer?: number;
-	private index = 0;
 	private finished = false;
-	private readonly pseudoWords = ['mira', 'tavo', 'neli', 'sora', 'vemi'];
-	constructor(app: App, private readonly text = 'Готовим задание…', private readonly onCancel?: () => void) { super(app); }
-	onOpen(): void { this.contentEl.empty(); this.contentEl.addClass('translation-trainer-loading'); const status = this.contentEl.createEl('p', { text: this.text, attr: { 'aria-live': 'polite' } }); const token = status.createSpan({ text: ` ${this.pseudoWords[0] ?? ''}`, cls: 'translation-trainer-pseudo-word' }); if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) this.timer = window.setInterval(() => { this.index = (this.index + 1) % this.pseudoWords.length; token.setText(` ${this.pseudoWords[this.index] ?? ''}`); }, 120); }
+	private tokenStream?: TokenStreamAnimation;
+	constructor(app: App, private readonly text = 'Готовим задание…', private readonly onCancel?: () => void, private readonly widthPx = 760) { super(app); }
+	onOpen(): void { applyModalWidth(this.modalEl, this.widthPx); this.contentEl.empty(); this.contentEl.addClass('translation-trainer-loading'); this.tokenStream = createTokenStream(this.contentEl, this.text.replace(/…$/u, '')); }
 	finish(): void { this.finished = true; this.close(); }
-	onClose(): void { if (this.timer !== undefined) window.clearInterval(this.timer); if (!this.finished) this.onCancel?.(); }
+	onClose(): void { this.tokenStream?.stop(); this.tokenStream = undefined; if (!this.finished) this.onCancel?.(); }
+}
+
+function applyModalWidth(modalEl: HTMLElement, widthPx: number): void {
+	const width = Number.isFinite(widthPx) ? Math.max(320, Math.min(1600, Math.round(widthPx))) : 760;
+	modalEl.addClass('translation-trainer-modal-shell');
+	modalEl.style.setProperty('--translation-trainer-modal-width', `${width}px`);
 }

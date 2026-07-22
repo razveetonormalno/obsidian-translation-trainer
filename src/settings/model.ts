@@ -2,6 +2,9 @@ import type { CefrLevel } from '../domain/types';
 
 export type SchedulerMode = 'active' | 'background';
 
+export const MIN_EXERCISE_MODAL_WIDTH = 520;
+export const MAX_EXERCISE_MODAL_WIDTH = 1200;
+
 export interface TranslationTrainerSettings {
 	vocabularyPath: string;
 	vocabularySection: string;
@@ -15,6 +18,7 @@ export interface TranslationTrainerSettings {
 	quietHoursStart: string;
 	quietHoursEnd: string;
 	dailyAutomaticLimit: number;
+	exerciseModalWidth: number;
 	paused: boolean;
 }
 
@@ -31,6 +35,7 @@ export const DEFAULT_SETTINGS: Readonly<TranslationTrainerSettings> = {
 	quietHoursStart: '23:00',
 	quietHoursEnd: '09:00',
 	dailyAutomaticLimit: 10,
+	exerciseModalWidth: 760,
 	paused: false,
 };
 
@@ -50,6 +55,7 @@ export function mergeSettings(value: unknown): TranslationTrainerSettings {
 		quietHoursStart: timeOr(candidate.quietHoursStart, DEFAULT_SETTINGS.quietHoursStart),
 		quietHoursEnd: timeOr(candidate.quietHoursEnd, DEFAULT_SETTINGS.quietHoursEnd),
 		dailyAutomaticLimit: positiveIntegerOr(candidate.dailyAutomaticLimit, DEFAULT_SETTINGS.dailyAutomaticLimit),
+		exerciseModalWidth: boundedIntegerOr(candidate.exerciseModalWidth, DEFAULT_SETTINGS.exerciseModalWidth, MIN_EXERCISE_MODAL_WIDTH, MAX_EXERCISE_MODAL_WIDTH),
 		paused: typeof candidate.paused === 'boolean' ? candidate.paused : DEFAULT_SETTINGS.paused,
 	};
 }
@@ -64,6 +70,10 @@ function stringOr(value: unknown, fallback: string): string {
 
 function positiveIntegerOr(value: unknown, fallback: number): number {
 	return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+function boundedIntegerOr(value: unknown, fallback: number, minimum: number, maximum: number): number {
+	return typeof value === 'number' && Number.isInteger(value) && value >= minimum && value <= maximum ? value : fallback;
 }
 
 function timeOr(value: unknown, fallback: string): string {
