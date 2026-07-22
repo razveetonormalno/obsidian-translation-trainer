@@ -30,14 +30,15 @@ export class TranslationModal extends Modal {
 	private showVocabulary = false;
 	private shownAt = Date.now();
 	private tokenStream?: TokenStreamAnimation;
+	private removeOutsideClickGuard?: () => void;
 
 	constructor(app: App, private readonly options: TranslationModalOptions) {
 		super(app);
 		this.question = options.question;
 	}
 
-	onOpen(): void { applyModalWidth(this.modalEl, this.options.widthPx); this.render(); }
-	onClose(): void { this.stopTokenStream(); this.options.actions.onClose?.(); }
+	onOpen(): void { applyModalWidth(this.modalEl, this.options.widthPx); this.removeOutsideClickGuard = guardAgainstOutsideClick(this.containerEl, this.modalEl); this.render(); }
+	onClose(): void { this.removeOutsideClickGuard?.(); this.removeOutsideClickGuard = undefined; this.stopTokenStream(); this.options.actions.onClose?.(); }
 
 	private render(): void {
 		const { contentEl } = this;
@@ -132,14 +133,26 @@ export class TranslationModal extends Modal {
 export class LoadingModal extends Modal {
 	private finished = false;
 	private tokenStream?: TokenStreamAnimation;
+	private removeOutsideClickGuard?: () => void;
 	constructor(app: App, private readonly text = 'Готовим задание…', private readonly onCancel?: () => void, private readonly widthPx = 760) { super(app); }
-	onOpen(): void { applyModalWidth(this.modalEl, this.widthPx); this.contentEl.empty(); this.contentEl.addClass('translation-trainer-loading'); this.tokenStream = createTokenStream(this.contentEl, this.text.replace(/…$/u, '')); }
+	onOpen(): void { applyModalWidth(this.modalEl, this.widthPx); this.removeOutsideClickGuard = guardAgainstOutsideClick(this.containerEl, this.modalEl); this.contentEl.empty(); this.contentEl.addClass('translation-trainer-loading'); this.tokenStream = createTokenStream(this.contentEl, this.text.replace(/…$/u, '')); }
 	finish(): void { this.finished = true; this.close(); }
-	onClose(): void { this.tokenStream?.stop(); this.tokenStream = undefined; if (!this.finished) this.onCancel?.(); }
+	onClose(): void { this.removeOutsideClickGuard?.(); this.removeOutsideClickGuard = undefined; this.tokenStream?.stop(); this.tokenStream = undefined; if (!this.finished) this.onCancel?.(); }
 }
 
 function applyModalWidth(modalEl: HTMLElement, widthPx: number): void {
 	const width = Number.isFinite(widthPx) ? Math.max(320, Math.min(1600, Math.round(widthPx))) : 760;
 	modalEl.addClass('translation-trainer-modal-shell');
 	modalEl.style.setProperty('--translation-trainer-modal-width', `${width}px`);
+}
+
+function guardAgainstOutsideClick(containerEl: HTMLElement, modalEl: HTMLElement): () => void {
+	const preventClose = (event: MouseEvent): void => {
+		const target = event.target;
+		if (!(target instanceof Node) || modalEl.contains(target)) return;
+		event.preventDefault();
+		event.stopImmediatePropagation();
+	};
+	containerEl.addEventListener('click', preventClose, true);
+	return () => containerEl.removeEventListener('click', preventClose, true);
 }
