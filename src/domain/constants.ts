@@ -13,3 +13,6 @@ export const SERVICE_DIRECTORY = '.translation-trainer';
 export const QUESTION_BANK_DIRECTORY = `${SERVICE_DIRECTORY}/question-banks`;
 export const ATTEMPTS_DIRECTORY = `${SERVICE_DIRECTORY}/attempts`;
 export const EXPORTS_DIRECTORY = `${SERVICE_DIRECTORY}/exports`;
+export const DIAGNOSTIC_LOG_DIRECTORY = `${SERVICE_DIRECTORY}/logs`;
+export const DIAGNOSTIC_LOG_PATH = `${DIAGNOSTIC_LOG_DIRECTORY}/diagnostics.jsonl`;
+export const DIAGNOSTIC_LOG_RETENTION_MS = 24 * 60 * 60 * 1_000;

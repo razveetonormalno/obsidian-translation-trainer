@@ -1,10 +1,15 @@
 import { Notice } from 'obsidian';
+import { formatErrorDiagnostics } from '../diagnostics';
+
+export type ErrorLogSink = (error: unknown, context: string) => Promise<void>;
 
 /** User-safe error reporting shared by all UI surfaces. */
 export class ErrorReporter {
 	private readonly recent = new Map<string, number>();
+	constructor(private readonly log?: ErrorLogSink) {}
 
 	report(error: unknown, fallback = 'Не удалось выполнить действие.'): void {
+		void this.log?.(error, fallback).catch(() => undefined);
 		const message = this.userMessage(error, fallback);
 		const now = Date.now();
 		const previous = this.recent.get(message) ?? 0;
@@ -14,11 +19,7 @@ export class ErrorReporter {
 	}
 
 	diagnostics(error: unknown): string {
-		const value = error instanceof Error ? error.message : String(error);
-		return value
-			.replace(/(?:api[_ -]?key|authorization|bearer)\s*[:=]\s*[^\s,;]+/gi, 'credential: [скрыто]')
-			.replace(/https?:\/\/[^\s]+/gi, '[URL скрыт]')
-			.slice(0, 1_000);
+		return formatErrorDiagnostics(error);
 	}
 
 	private userMessage(error: unknown, fallback: string): string {
