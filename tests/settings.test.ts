@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, MAX_EXERCISE_MODAL_WIDTH, mergeSettings, MIN_EXERCISE_MODAL_WIDTH } from '../src/settings/model';
 import { ApiKeyStore } from '../src/settings/secrets';
+import { DeviceLlmSettingsStore, settingsForVault } from '../src/settings/device';
 
 describe('settings', () => {
 	it('keeps a valid exercise window width', () => {
@@ -35,5 +36,28 @@ describe('API key storage compatibility', () => {
 		} as never);
 		store.set('secret');
 		expect(store.get()).toBe('secret');
+	});
+});
+
+describe('device-specific model settings', () => {
+	it('seeds each device once and keeps its own connection settings', () => {
+		const values = new Map<string, unknown>();
+		const app = {
+			loadLocalStorage: (key: string) => values.get(key) ?? null,
+			saveLocalStorage: (key: string, value: unknown) => { values.set(key, value); },
+		};
+		const store = new DeviceLlmSettingsStore(app);
+		const first = store.load({ ...DEFAULT_SETTINGS, endpoint: 'http://windows:8080/v1', model: 'windows-model' });
+		expect(first).toMatchObject({ endpoint: 'http://windows:8080/v1', model: 'windows-model' });
+
+		store.save({ endpoint: 'https://phone.example/v1', model: 'phone-model', timeoutMs: 45_000 });
+		const reloaded = store.load({ ...DEFAULT_SETTINGS, endpoint: 'http://macbook:8080/v1', model: 'mac-model' });
+		expect(reloaded).toEqual({ endpoint: 'https://phone.example/v1', model: 'phone-model', timeoutMs: 45_000 });
+	});
+
+	it('keeps device connection values out of synchronized plugin data', () => {
+		const runtime = { ...DEFAULT_SETTINGS, endpoint: 'https://phone.example/v1', model: 'phone-model', timeoutMs: 45_000 };
+		const persisted = settingsForVault(runtime, { endpoint: 'http://migration-default:8080/v1', model: 'fallback-model', timeoutMs: 120_000 });
+		expect(persisted).toMatchObject({ endpoint: 'http://migration-default:8080/v1', model: 'fallback-model', timeoutMs: 120_000 });
 	});
 });

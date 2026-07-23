@@ -22,7 +22,11 @@ import {
 } from './review';
 import {
 	ApiKeyStore,
+	DeviceLlmSettingsStore,
 	mergeSettings,
+	pickDeviceLlmSettings,
+	settingsForVault,
+	type DeviceLlmSettings,
 } from './settings';
 import {
 	type SettingsTabActions,
@@ -53,6 +57,8 @@ export default class TranslationTrainerPlugin extends Plugin {
 	private data!: PluginData;
 	private fileStore!: TranslationTrainerFileStore;
 	private apiKeys!: ApiKeyStore;
+	private deviceLlmSettings!: DeviceLlmSettingsStore;
+	private synchronizedLlmFallback!: DeviceLlmSettings;
 	private vocabulary!: VocabularyService;
 	private provider!: LlmProvider;
 	private questions!: QuestionService;
@@ -67,6 +73,9 @@ export default class TranslationTrainerPlugin extends Plugin {
 	async onload(): Promise<void> {
 		this.dataStore = new PluginDataStore(this);
 		this.data = await this.dataStore.load();
+		this.synchronizedLlmFallback = pickDeviceLlmSettings(this.data.settings);
+		this.deviceLlmSettings = new DeviceLlmSettingsStore(this.app);
+		this.data.settings = mergeSettings({ ...this.data.settings, ...this.deviceLlmSettings.load(this.data.settings) });
 		this.apiKeys = new ApiKeyStore(this.app);
 		this.diagnosticLog = new DiagnosticLog(this.app.vault.adapter);
 		try {
@@ -355,6 +364,9 @@ export default class TranslationTrainerPlugin extends Plugin {
 				const previousPath = this.data.settings.vocabularyPath;
 				const previousSection = this.data.settings.vocabularySection;
 				this.data.settings = mergeSettings({ ...this.data.settings, ...patch });
+				if ('endpoint' in patch || 'model' in patch || 'timeoutMs' in patch) {
+					this.deviceLlmSettings.save(this.data.settings);
+				}
 				await this.savePluginData();
 				if (previousPath !== this.data.settings.vocabularyPath || previousSection !== this.data.settings.vocabularySection) {
 					await this.safeReindexVocabulary();
@@ -399,7 +411,10 @@ export default class TranslationTrainerPlugin extends Plugin {
 	}
 
 	private async savePluginData(): Promise<void> {
-		await this.dataStore.save(this.data);
+		await this.dataStore.save({
+			...this.data,
+			settings: settingsForVault(this.data.settings, this.synchronizedLlmFallback),
+		});
 	}
 }
 

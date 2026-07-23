@@ -48,7 +48,7 @@ export class TranslationTrainerSettingsTab extends PluginSettingTab {
 		this.text('Раздел заметки', 'Оставьте пустым, чтобы читать всю заметку.', settings.vocabularySection, value => this.updateText('vocabularySection', value));
 		new Setting(containerEl).setName('Уровень английского').setDesc('Шкала уровней владения языком.').addDropdown(dropdown => { for (const level of ['A1', 'A2', 'B1', 'B2', 'C1'] as const) dropdown.addOption(level, level); dropdown.setValue(settings.cefrLevel).onChange(value => this.run(() => this.actions.update({ cefrLevel: value as CefrLevel }))); });
 
-		new Setting(containerEl).setName('Языковая модель').setHeading();
+		new Setting(containerEl).setName('Языковая модель').setDesc('Эти параметры сохраняются отдельно на текущем устройстве и не синхронизируются с vault.').setHeading();
 		this.text('Endpoint', 'OpenAI-compatible URL, например http://127.0.0.1:8080/v1.', settings.endpoint, value => this.updateText('endpoint', value));
 		this.text('Модель', 'Имя модели на выбранном endpoint.', settings.model, value => this.updateText('model', value));
 		this.text('Timeout', 'Время ожидания ответа в миллисекундах.', settings.timeoutMs, async value => this.updateNumber('timeoutMs', value));
@@ -56,7 +56,7 @@ export class TranslationTrainerSettingsTab extends PluginSettingTab {
 		let clearApiKey = (): void => undefined;
 		new Setting(containerEl)
 			.setName('API secret')
-			.setDesc('Хранится только в защищённом хранилище Obsidian.')
+			.setDesc('Хранится в защищённом хранилище текущего устройства и не записывается в vault.')
 			.addText(text => {
 				text.inputEl.type = 'password';
 				text.setPlaceholder('Вставьте новый API key');
