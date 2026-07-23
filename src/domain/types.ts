@@ -107,11 +107,11 @@ export interface VocabularyEvaluation extends CriterionEvaluation {
 export interface TranslationError {
 	fragment: string;
 	category: 'meaning' | 'grammar' | 'naturalness' | 'vocabulary';
-	topicId?: string;
-	vocabularyKey?: string;
+	topicId: string | null;
+	vocabularyKey: string | null;
 	severity: ErrorSeverity;
 	explanationRu: string;
-	replacement?: string;
+	replacement: string | null;
 }
 
 export interface TranslationEvaluation {
@@ -158,6 +158,19 @@ export interface EvaluationRequest {
 	allowedTopics: GrammarTopic[];
 }
 
+export interface FollowUpMessage {
+	role: 'user' | 'assistant';
+	content: string;
+}
+
+export interface FollowUpRequest {
+	question: TranslationQuestion;
+	userAnswer: string;
+	evaluation: TranslationEvaluation;
+	history: FollowUpMessage[];
+	userQuestion: string;
+}
+
 export interface ConnectionTestResult {
 	model: string;
 	latencyMs: number;
@@ -186,4 +199,7 @@ export interface LlmProvider {
 	evaluateAnswer(
 		request: EvaluationRequest,
 	): Promise<LlmResult<TranslationEvaluation>>;
+	answerFollowUp(
+		request: FollowUpRequest,
+	): Promise<LlmResult<string>>;
 }

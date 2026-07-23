@@ -1,11 +1,12 @@
 import { requestUrl } from 'obsidian';
-import type { ConnectionTestResult, EvaluationRequest, LlmProvider, LlmResult, QuestionGenerationRequest, TranslationEvaluation, TranslationQuestion } from '../domain/types';
-import { EVALUATION_PROMPT_VERSION, GENERATION_PROMPT_VERSION, evaluationSystemPrompt, generationSystemPrompt, repairSystemPrompt } from '../prompts';
+import type { ConnectionTestResult, EvaluationRequest, FollowUpRequest, LlmProvider, LlmResult, QuestionGenerationRequest, TranslationEvaluation, TranslationQuestion } from '../domain/types';
+import { EVALUATION_PROMPT_VERSION, FOLLOW_UP_PROMPT_VERSION, GENERATION_PROMPT_VERSION, evaluationSystemPrompt, followUpSystemPrompt, generationSystemPrompt, repairSystemPrompt } from '../prompts';
 import { LlmError, sanitizeError } from './errors';
 import { evaluationValidator, generatedQuestionValidator, questionValidator, validatorDiagnostics } from './schemas';
 
 export interface OpenAiCompatibleConfig { baseUrl: string; model: string; apiKey?: string; timeoutMs: number; }
 type SchemaKind = 'question' | 'evaluation';
+type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
 export class OpenAiCompatibleProvider implements LlmProvider {
 	constructor(private readonly config: OpenAiCompatibleConfig) {}
@@ -43,6 +44,20 @@ export class OpenAiCompatibleProvider implements LlmProvider {
 		return { data, metadata: this.metadata(EVALUATION_PROMPT_VERSION, latencyMs) };
 	}
 
+	async answerFollowUp(request: FollowUpRequest): Promise<LlmResult<string>> {
+		const question = request.userQuestion.trim();
+		if (!question) throw new LlmError('configuration', 'Введите вопрос для уточнения.', 'Follow-up question is empty.');
+		const started = Date.now();
+		const history: ChatMessage[] = request.history.slice(-12).map(message => ({ role: message.role, content: message.content }));
+		const response = (await this.chat([
+			{ role: 'system', content: followUpSystemPrompt(request) },
+			...history,
+			{ role: 'user', content: question.slice(0, 2_000) },
+		])).trim();
+		if (!response) throw new LlmError('response', 'Модель вернула пустой ответ.', 'Follow-up response was empty.');
+		return { data: response, metadata: this.metadata(FOLLOW_UP_PROMPT_VERSION, Date.now() - started) };
+	}
+
 	private async structured(kind: SchemaKind, prompt: string, topicIds: string[], vocabularyKeys: string[]): Promise<unknown> {
 		const started = Date.now();
 		let validator = kind === 'question' ? generatedQuestionValidator(topicIds, vocabularyKeys) : evaluationValidator(topicIds, vocabularyKeys);
@@ -75,7 +90,7 @@ export class OpenAiCompatibleProvider implements LlmProvider {
 		return withLatency(parsed, Date.now() - started);
 	}
 
-	private async chat(messages: Array<{ role: 'system' | 'user'; content: string }>, responseFormat?: Record<string, unknown>): Promise<string> {
+	private async chat(messages: ChatMessage[], responseFormat?: Record<string, unknown>): Promise<string> {
 		const body = await this.request('/chat/completions', 'POST', { model: this.config.model, messages, temperature: 0.2, ...(responseFormat ? { response_format: responseFormat } : {}) });
 		const content = isRecord(body) && Array.isArray(body.choices) && isRecord(body.choices[0]) && isRecord(body.choices[0].message) ? body.choices[0].message.content : undefined;
 		if (typeof content !== 'string') throw new LlmError('response', 'Сервер вернул некорректный ответ модели.', 'Missing choices[0].message.content.');

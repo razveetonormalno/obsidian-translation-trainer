@@ -1,7 +1,8 @@
-import type { EvaluationRequest, QuestionGenerationRequest } from '../domain/types';
+import type { EvaluationRequest, FollowUpRequest, QuestionGenerationRequest } from '../domain/types';
 
 export const GENERATION_PROMPT_VERSION = 1;
-export const EVALUATION_PROMPT_VERSION = 1;
+export const EVALUATION_PROMPT_VERSION = 2;
+export const FOLLOW_UP_PROMPT_VERSION = 1;
 
 export function generationSystemPrompt(request: QuestionGenerationRequest): string {
 	return [
@@ -25,7 +26,23 @@ export function evaluationSystemPrompt(request: EvaluationRequest): string {
 		`Target vocabulary canonical keys: ${request.question.targetVocabulary.join(', ')}`,
 		`Student answer: ${request.userAnswer}`,
 		'Explain feedback in Russian. Do not invent topic or vocabulary identifiers.',
-		'Required JSON fields: meaning, grammar, naturalness, vocabulary, overallScore, isAcceptable, confidence, correctedTranslation, alternativeTranslations, errors, summaryRu. Criterion fields have score and explanationRu. grammar additionally has topicScores; vocabulary additionally has itemScores. Every error has fragment, category, severity, explanationRu and optional topicId, vocabularyKey, replacement.',
+		'Required JSON fields: meaning, grammar, naturalness, vocabulary, overallScore, isAcceptable, confidence, correctedTranslation, alternativeTranslations, errors, summaryRu. Criterion fields have score and explanationRu. grammar additionally has topicScores; vocabulary additionally has itemScores. Every error has fragment, category, topicId, vocabularyKey, severity, explanationRu, replacement. Use null for topicId, vocabularyKey, or replacement when it does not apply.',
+	].join('\n');
+}
+
+export function followUpSystemPrompt(request: FollowUpRequest): string {
+	return [
+		'You are continuing a conversation as a careful English translation tutor.',
+		`Prompt version: ${FOLLOW_UP_PROMPT_VERSION}.`,
+		'Answer in Russian unless the student explicitly asks for another language.',
+		'Be concise, concrete, and educational. Discuss only the supplied exercise and language-learning questions related to it.',
+		`Russian source: ${request.question.sourceRu}`,
+		`Reference answers: ${request.question.referenceAnswers.join(' | ')}`,
+		`Student answer: ${request.userAnswer}`,
+		`Corrected translation: ${request.evaluation.correctedTranslation}`,
+		`Evaluation summary: ${request.evaluation.summaryRu}`,
+		`Errors: ${request.evaluation.errors.map(error => `${error.fragment}: ${error.explanationRu}${error.replacement ? ` -> ${error.replacement}` : ''}`).join(' | ') || 'none'}`,
+		'Do not return JSON, Markdown code fences, or hidden reasoning. Return only the tutor response.',
 	].join('\n');
 }
 

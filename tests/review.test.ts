@@ -21,8 +21,8 @@ describe('automatic review intervals', () => {
 		expect(nextIntervalMinutes(evaluation({ overallScore: 64, meaning: { score: 60, explanationRu: '' } }), 0)).toBe(1440);
 		expect(nextIntervalMinutes(evaluation({ overallScore: 90, grammar: { score: 49, explanationRu: '', topicScores: [] } }), 0)).toBe(1440);
 		expect(nextIntervalMinutes(evaluation({ overallScore: 90, grammar: { score: 50, explanationRu: '', topicScores: [] } }), 0)).toBe(10080);
-		expect(nextIntervalMinutes(evaluation({ overallScore: 90, errors: [{ fragment: 'x', category: 'grammar', severity: 'major', explanationRu: '' }] }), 0)).toBe(4320);
-		expect(nextIntervalMinutes(evaluation({ overallScore: 90, errors: [{ fragment: 'x', category: 'meaning', severity: 'critical', explanationRu: '' }] }), 0)).toBe(30);
+		expect(nextIntervalMinutes(evaluation({ overallScore: 90, errors: [{ fragment: 'x', category: 'grammar', topicId: null, vocabularyKey: null, severity: 'major', explanationRu: '', replacement: null }] }), 0)).toBe(4320);
+		expect(nextIntervalMinutes(evaluation({ overallScore: 90, errors: [{ fragment: 'x', category: 'meaning', topicId: null, vocabularyKey: null, severity: 'critical', explanationRu: '', replacement: null }] }), 0)).toBe(30);
 	});
 
 	it.each([[0, 10080], [1, 20160], [2, 43200], [3, 86400], [4, 129600], [20, 129600]])('steps successful reviews through 7/14/30/60/90 days', (streak, minutes) => {

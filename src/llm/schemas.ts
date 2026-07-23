@@ -27,11 +27,10 @@ export function generatedQuestionValidator(topicIds: readonly string[], vocabula
 	const schema = {
 		type: 'object', additionalProperties: false, required: ['sourceRu', 'referenceAnswers', 'targetVocabulary', 'level', 'topics', 'difficulty', 'expectedFeatures'],
 		properties: {
-			schemaVersion: { type: 'integer', minimum: 1, nullable: true }, id: { type: 'string', minLength: 1, nullable: true }, sourceRu: { type: 'string', minLength: 1 },
+			sourceRu: { type: 'string', minLength: 1 },
 			referenceAnswers: { type: 'array', minItems: 2, items: { type: 'string', minLength: 1 } }, targetVocabulary: { type: 'array', minItems: 1, items: { type: 'string', enum: [...vocabularyKeys] } },
 			level: { type: 'string', enum: ['A1', 'A2', 'B1', 'B2', 'C1'] }, topics: { type: 'array', minItems: 1, items: { type: 'string', enum: [...topicIds] } }, difficulty: { type: 'number', minimum: 0, maximum: 1 },
-			generationSource: { type: 'string', enum: ['starter', 'imported', 'local-llm', 'cloud-llm'], nullable: true }, expectedFeatures: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['topicId', 'description', 'required', 'acceptedVariants'], properties: { topicId: { type: 'string', enum: [...topicIds] }, description: { type: 'string', minLength: 1 }, required: { type: 'boolean' }, acceptedVariants: { type: 'array', items: { type: 'string' } } } } },
-			createdAt: { type: 'string', minLength: 1, nullable: true }, generationPromptVersion: { type: 'integer', minimum: 1, nullable: true },
+			expectedFeatures: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['topicId', 'description', 'required', 'acceptedVariants'], properties: { topicId: { type: 'string', enum: [...topicIds] }, description: { type: 'string', minLength: 1 }, required: { type: 'boolean' }, acceptedVariants: { type: 'array', items: { type: 'string' } } } } },
 		},
 	} as unknown as JSONSchemaType<Partial<TranslationQuestion>>;
 	return ajv.compile(schema);
@@ -39,17 +38,17 @@ export function generatedQuestionValidator(topicIds: readonly string[], vocabula
 
 export function evaluationValidator(topicIds: readonly string[], vocabularyKeys: readonly string[]): ValidateFunction<TranslationEvaluation> {
 	const criterion = { type: 'object', additionalProperties: false, required: ['score', 'explanationRu'], properties: { score, explanationRu: { type: 'string' } } } as const;
-	const schema: JSONSchemaType<TranslationEvaluation> = {
+	const schema = {
 		type: 'object', additionalProperties: false, required: ['meaning', 'grammar', 'naturalness', 'vocabulary', 'overallScore', 'isAcceptable', 'confidence', 'correctedTranslation', 'alternativeTranslations', 'errors', 'summaryRu'],
 		properties: {
 			meaning: criterion, naturalness: criterion,
 			grammar: { type: 'object', additionalProperties: false, required: ['score', 'explanationRu', 'topicScores'], properties: { score, explanationRu: { type: 'string' }, topicScores: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['topicId', 'score', 'status', 'evidence', 'explanationRu'], properties: { topicId: { type: 'string', enum: [...topicIds] }, score, status, evidence: { type: 'string' }, explanationRu: { type: 'string' } } } } } },
 			vocabulary: { type: 'object', additionalProperties: false, required: ['score', 'explanationRu', 'itemScores'], properties: { score, explanationRu: { type: 'string' }, itemScores: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['canonicalKey', 'displayTerm', 'score', 'status', 'evidence', 'explanationRu'], properties: { canonicalKey: { type: 'string', enum: [...vocabularyKeys] }, displayTerm: { type: 'string' }, score, status, evidence: { type: 'string' }, explanationRu: { type: 'string' } } } } } },
 			overallScore: score, isAcceptable: { type: 'boolean' }, confidence: score, correctedTranslation: { type: 'string' }, alternativeTranslations: { type: 'array', items: { type: 'string' } },
-			errors: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['fragment', 'category', 'severity', 'explanationRu'], properties: { fragment: { type: 'string' }, category: { type: 'string', enum: ['meaning', 'grammar', 'naturalness', 'vocabulary'] }, topicId: { type: 'string', enum: [...topicIds], nullable: true }, vocabularyKey: { type: 'string', enum: [...vocabularyKeys], nullable: true }, severity, explanationRu: { type: 'string' }, replacement: { type: 'string', nullable: true } } } },
+			errors: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['fragment', 'category', 'topicId', 'vocabularyKey', 'severity', 'explanationRu', 'replacement'], properties: { fragment: { type: 'string' }, category: { type: 'string', enum: ['meaning', 'grammar', 'naturalness', 'vocabulary'] }, topicId: { type: ['string', 'null'], enum: [...topicIds, null] }, vocabularyKey: { type: ['string', 'null'], enum: [...vocabularyKeys, null] }, severity, explanationRu: { type: 'string' }, replacement: { type: ['string', 'null'] } } } },
 			summaryRu: { type: 'string' },
 		},
-	};
+	} as unknown as JSONSchemaType<TranslationEvaluation>;
 	return ajv.compile(schema);
 }
 

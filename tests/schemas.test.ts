@@ -27,6 +27,11 @@ describe('strict LLM schemas', () => {
 		expect(generatedQuestionValidator(topics, words)(generated)).toBe(true);
 	});
 
+	it('uses OpenAI-compatible strict schemas at every object level', () => {
+		expectStrictObjectSchema(generatedQuestionValidator(topics, words).schema);
+		expectStrictObjectSchema(evaluationValidator(topics, words).schema);
+	});
+
 	it('rejects unknown topics/words, out-of-range difficulty and additional properties', () => {
 		const validator = questionValidator(topics, words);
 		expect(validator(question({ topics: ['unknown'] }))).toBe(false);
@@ -40,5 +45,25 @@ describe('strict LLM schemas', () => {
 		expect(validator(evaluation())).toBe(true);
 		expect(validator(evaluation({ grammar: { score: 80, explanationRu: '', topicScores: [{ topicId: 'unknown', score: 80, status: 'correct', evidence: '', explanationRu: '' }] } }))).toBe(false);
 		expect(validator(evaluation({ vocabulary: { score: 80, explanationRu: '', itemScores: [{ canonicalKey: 'unknown', displayTerm: '', score: 80, status: 'correct', evidence: '', explanationRu: '' }] } }))).toBe(false);
+		const error = { fragment: 'x', category: 'grammar' as const, topicId: null, vocabularyKey: null, severity: 'minor' as const, explanationRu: 'x', replacement: null };
+		expect(validator(evaluation({ errors: [error] }))).toBe(true);
+		const missingNullableField = { ...error } as Partial<typeof error>;
+		delete missingNullableField.topicId;
+		expect(validator(evaluation({ errors: [missingNullableField as never] }))).toBe(false);
 	});
 });
+
+function expectStrictObjectSchema(value: unknown): void {
+	if (!isRecord(value)) return;
+	if (value.type === 'object') {
+		expect(value.additionalProperties).toBe(false);
+		const properties = isRecord(value.properties) ? value.properties : {};
+		expect(new Set(Array.isArray(value.required) ? value.required : [])).toEqual(new Set(Object.keys(properties)));
+		for (const property of Object.values(properties)) expectStrictObjectSchema(property);
+	}
+	if (value.type === 'array') expectStrictObjectSchema(value.items);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
