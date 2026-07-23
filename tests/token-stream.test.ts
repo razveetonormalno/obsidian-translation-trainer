@@ -19,4 +19,14 @@ describe('token stream model', () => {
 		for (let index = 0; index < 100; index += 1) frame = model.advance();
 		expect(frame).toHaveLength(36);
 	});
+
+	it('uses language-like tokens without Russian words', () => {
+		const model = new TokenStreamModel();
+		let frame = model.advance();
+		for (let index = 0; index < 24; index += 1) frame = model.advance();
+		const text = frame.map(token => token.text).join(' ');
+		expect(text).not.toMatch(/[А-Яа-яЁё]/u);
+		expect(text).toMatch(/[æœøšžčëöüû]/iu);
+		expect(text).toMatch(/[,.]/u);
+	});
 });
