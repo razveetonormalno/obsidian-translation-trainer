@@ -6,6 +6,7 @@ import type {
 	TranslationQuestion,
 } from './domain/types';
 import { ATTEMPT_SCHEMA_VERSION } from './domain/constants';
+import { DiagnosticLog } from './diagnostics';
 import { GRAMMAR_TOPICS, topicById } from './curriculum/topics';
 import { OpenAiCompatibleProvider, questionValidator } from './llm';
 import type { LlmProvider } from './domain/types';
@@ -57,7 +58,8 @@ export default class TranslationTrainerPlugin extends Plugin {
 	private questions!: QuestionService;
 	private statistics!: StatisticsService;
 	private scheduler!: ReviewScheduler;
-	private readonly reporter = new ErrorReporter();
+	private reporter = new ErrorReporter();
+	private diagnosticLog!: DiagnosticLog;
 	private modalOpen = false;
 	private sessionQueue: TranslationQuestion[] = [];
 	private reindexTimer?: number;
@@ -66,6 +68,13 @@ export default class TranslationTrainerPlugin extends Plugin {
 		this.dataStore = new PluginDataStore(this);
 		this.data = await this.dataStore.load();
 		this.apiKeys = new ApiKeyStore(this.app);
+		this.diagnosticLog = new DiagnosticLog(this.app.vault.adapter);
+		try {
+			await this.diagnosticLog.initialize();
+		} catch (error) {
+			this.reporter.report(error, 'Не удалось инициализировать журнал ошибок Translation Trainer.');
+		}
+		this.reporter = new ErrorReporter((error, context) => this.diagnosticLog.append(error, context));
 		this.fileStore = new TranslationTrainerFileStore(this.app.vault.adapter, (diagnostic) => {
 			const location = diagnostic.line ? `${diagnostic.path}:${diagnostic.line}` : diagnostic.path;
 			this.reporter.report(new Error(`${diagnostic.message} (${location})`), `Ошибка данных Translation Trainer: ${diagnostic.message}`);
@@ -102,6 +111,9 @@ export default class TranslationTrainerPlugin extends Plugin {
 		this.registerInterval(window.setInterval(() => {
 			void this.scheduler.check().catch((error: unknown) => this.reporter.report(error, 'Не удалось проверить расписание упражнений.'));
 		}, 60_000));
+		this.registerInterval(window.setInterval(() => {
+			void this.diagnosticLog.prune();
+		}, 60 * 60_000));
 		this.register(() => {
 			if (this.reindexTimer !== undefined) window.clearTimeout(this.reindexTimer);
 		});
@@ -230,6 +242,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 				reporter: this.reporter,
 				actions: {
 					evaluate: (current, answer, hintUsed, responseTimeMs) => this.evaluateAnswer(current, answer, hintUsed, responseTimeMs),
+					askFollowUp: async (current, answer, evaluation, history, userQuestion) => (await this.provider.answerFollowUp({ question: current, userAnswer: answer, evaluation, history: [...history], userQuestion })).data,
 					snooze: (questionId) => this.snooze(questionId),
 					next: sessionMode ? () => this.nextSessionQuestion() : undefined,
 					onClose: () => { this.modalOpen = false; this.sessionQueue = []; },
@@ -355,6 +368,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 			},
 			hasApiKey: async () => this.apiKeys.get() !== null,
 			testConnection: async () => this.provider.testConnection(),
+			readDiagnosticLog: () => this.diagnosticLog.readText(),
 			importQuestionBank: () => this.importActiveQuestionBank(),
 			reindexVocabulary: async () => ({ count: await this.safeReindexVocabulary() }),
 			getVocabularyDiagnostics: async () => this.vocabulary.entries.map(({ displayTerm, translation }) => ({ displayTerm, translation })),

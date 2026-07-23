@@ -1,12 +1,14 @@
 import { App, Modal, Notice } from 'obsidian';
-import type { TranslationEvaluation, TranslationQuestion } from '../domain/types';
+import type { FollowUpMessage, TranslationEvaluation, TranslationQuestion } from '../domain/types';
 import { enhanceButtonMotion } from './button-motion';
 import { ErrorReporter } from './error-reporter';
+import { renderFollowUpView } from './follow-up-view';
 import { renderTranslationResult } from './result-view';
 import { createTokenStream, type TokenStreamAnimation } from './token-stream';
 
 export interface TranslationModalActions {
 	evaluate(question: TranslationQuestion, answer: string, hintUsed: boolean, responseTimeMs: number): Promise<TranslationEvaluation>;
+	askFollowUp(question: TranslationQuestion, answer: string, evaluation: TranslationEvaluation, history: readonly FollowUpMessage[], userQuestion: string): Promise<string>;
 	snooze(questionId: string): Promise<void>;
 	next?(): Promise<TranslationQuestion | undefined>;
 	onClose?(): void;
@@ -31,6 +33,10 @@ export class TranslationModal extends Modal {
 	private shownAt = Date.now();
 	private tokenStream?: TokenStreamAnimation;
 	private removeOutsideClickGuard?: () => void;
+	private followUpDraft = '';
+	private followUpMessages: FollowUpMessage[] = [];
+	private followUpDiagnostic?: string;
+	private askingFollowUp = false;
 
 	constructor(app: App, private readonly options: TranslationModalOptions) {
 		super(app);
@@ -107,22 +113,56 @@ export class TranslationModal extends Modal {
 
 	private renderResult(contentEl: HTMLElement, result: TranslationEvaluation): void {
 		renderTranslationResult(contentEl, result, this.answer);
+		this.tokenStream = renderFollowUpView(contentEl, {
+			messages: this.followUpMessages,
+			draft: this.followUpDraft,
+			loading: this.askingFollowUp,
+			diagnostic: this.followUpDiagnostic,
+			onDraftChange: value => { this.followUpDraft = value; },
+			onSubmit: () => void this.submitFollowUp(),
+		});
 		const controls = contentEl.createDiv({ cls: 'translation-trainer-controls' });
 		if (this.options.sessionMode && this.options.actions.next) {
 			const next = enhanceButtonMotion(controls.createEl('button', { text: 'Следующее', cls: 'mod-cta' }));
+			next.disabled = this.askingFollowUp;
 			next.addEventListener('click', () => void this.loadNext());
 		}
 		const close = enhanceButtonMotion(controls.createEl('button', { text: 'Закрыть' }));
 		close.addEventListener('click', () => this.close());
 	}
 
+	private async submitFollowUp(): Promise<void> {
+		if (this.askingFollowUp || !this.evaluation) return;
+		const userQuestion = this.followUpDraft.trim();
+		if (!userQuestion) return;
+		const history = [...this.followUpMessages];
+		this.followUpMessages.push({ role: 'user', content: userQuestion });
+		this.followUpDraft = '';
+		this.followUpDiagnostic = undefined;
+		this.askingFollowUp = true;
+		this.render();
+		try {
+			const response = await this.options.actions.askFollowUp(this.question, this.answer, this.evaluation, history, userQuestion);
+			this.followUpMessages.push({ role: 'assistant', content: response });
+		} catch (error) {
+			this.followUpMessages.pop();
+			this.followUpDraft = userQuestion;
+			this.options.reporter.report(error, 'Не удалось получить ответ на уточнение. Текст вопроса сохранён.');
+			this.followUpDiagnostic = this.options.reporter.diagnostics(error);
+		} finally {
+			this.askingFollowUp = false;
+			this.stopTokenStream();
+			if (this.modalEl.isConnected) this.render();
+		}
+	}
+
 	private async loadNext(): Promise<void> {
-		if (!this.options.actions.next || this.submitting) return;
+		if (!this.options.actions.next || this.submitting || this.askingFollowUp) return;
 		this.submitting = true; this.render();
 		try {
 			const next = await this.options.actions.next();
 			if (!next) { new Notice('Больше заданий пока нет.'); this.close(); return; }
-			this.question = next; this.answer = ''; this.evaluation = undefined; this.technicalDetails = undefined; this.showTopics = false; this.showVocabulary = false; this.shownAt = Date.now();
+			this.question = next; this.answer = ''; this.evaluation = undefined; this.technicalDetails = undefined; this.showTopics = false; this.showVocabulary = false; this.followUpDraft = ''; this.followUpMessages = []; this.followUpDiagnostic = undefined; this.shownAt = Date.now();
 		} catch (error) { this.options.reporter.report(error, 'Не удалось загрузить следующее задание.'); }
 		finally { this.submitting = false; if (this.modalEl.isConnected) this.render(); }
 	}

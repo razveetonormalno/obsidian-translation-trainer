@@ -9,6 +9,7 @@ export interface SettingsTabActions {
 	setApiKey(value: string): Promise<void>;
 	hasApiKey(): Promise<boolean>;
 	testConnection(): Promise<{ model: string; latencyMs: number }>;
+	readDiagnosticLog(): Promise<string>;
 	importQuestionBank(): Promise<void>;
 	reindexVocabulary(): Promise<{ count: number }>;
 	getVocabularyDiagnostics(): Promise<readonly { displayTerm: string; translation: string }[]>;
@@ -51,17 +52,90 @@ export class TranslationTrainerSettingsTab extends PluginSettingTab {
 		this.text('Endpoint', 'OpenAI-compatible URL, например http://127.0.0.1:8080/v1.', settings.endpoint, value => this.updateText('endpoint', value));
 		this.text('Модель', 'Имя модели на выбранном endpoint.', settings.model, value => this.updateText('model', value));
 		this.text('Timeout', 'Время ожидания ответа в миллисекундах.', settings.timeoutMs, async value => this.updateNumber('timeoutMs', value));
-		new Setting(containerEl).setName('API secret').setDesc('Хранится только в защищённом хранилище Obsidian.').addText(text => { text.inputEl.type = 'password'; text.setPlaceholder('Оставьте пустым, чтобы не менять'); text.onChange(value => { if (value) void this.run(async () => { await this.actions.setApiKey(value); text.setValue(''); }); }); });
-		void this.actions.hasApiKey().then(has => containerEl.createEl('p', { text: has ? 'API secret задан.' : 'API secret не задан.', cls: 'setting-item-description' })).catch(() => undefined);
+		let readApiKey = (): string => '';
+		let clearApiKey = (): void => undefined;
+		new Setting(containerEl)
+			.setName('API secret')
+			.setDesc('Хранится только в защищённом хранилище Obsidian.')
+			.addText(text => {
+				text.inputEl.type = 'password';
+				text.setPlaceholder('Вставьте новый API key');
+				readApiKey = () => text.getValue();
+				clearApiKey = () => { text.setValue(''); };
+			})
+			.addButton(button => button
+				.setButtonText('Сохранить ключ')
+				.setCta()
+				.onClick(() => this.run(async () => {
+					const apiKey = readApiKey().trim();
+					if (!apiKey) {
+						new Notice('Вставьте API key перед сохранением.');
+						return;
+					}
+					button.setDisabled(true);
+					try {
+						await this.actions.setApiKey(apiKey);
+						clearApiKey();
+						secretStatus.setText('API secret задан.');
+						new Notice('API key сохранён.');
+					} finally {
+						button.setDisabled(false);
+					}
+				})));
+		const secretStatus = containerEl.createEl('p', { text: 'Проверяем API secret…', cls: 'setting-item-description' });
+		void this.actions.hasApiKey().then(has => secretStatus.setText(has ? 'API secret задан.' : 'API secret не задан.')).catch(() => secretStatus.setText('Не удалось проверить API secret.'));
 
 		new Setting(containerEl).setName('Действия').setHeading();
-		this.button('Проверить подключение', 'Проверить endpoint и модель.', async () => { const result = await this.actions.testConnection(); new Notice(`Подключение работает: ${result.model}, ${result.latencyMs} мс.`); });
+		new Setting(containerEl)
+			.setName('Проверить подключение')
+			.setDesc('Проверить endpoint и модель.')
+			.addButton(button => button.setButtonText('Проверить подключение').onClick(async () => {
+				button.setDisabled(true);
+				try {
+					const result = await this.actions.testConnection();
+					connectionDetails.addClass('is-hidden');
+					connectionDetailsText.setText('');
+					new Notice(`Подключение работает: ${result.model}, ${result.latencyMs} мс.`);
+				} catch (error) {
+					this.reporter.report(error, 'Не удалось проверить подключение.');
+					connectionDetailsText.setText(this.reporter.diagnostics(error));
+					connectionDetails.removeClass('is-hidden');
+					connectionDetails.open = true;
+				} finally {
+					button.setDisabled(false);
+				}
+			}));
+		const connectionDetails = containerEl.createEl('details', { cls: 'translation-trainer-diagnostics' });
+		connectionDetails.addClass('is-hidden');
+		connectionDetails.createEl('summary', { text: 'Технические детали подключения' });
+		const connectionDetailsText = connectionDetails.createEl('pre');
 		this.button('Импортировать открытый JSONL', 'Откройте JSONL-файл в Obsidian и импортируйте валидные вопросы без дубликатов.', () => this.actions.importQuestionBank());
 		this.button('Переиндексировать слова', 'Повторно прочитать заметку со словами.', async () => { const result = await this.actions.reindexVocabulary(); new Notice(`Найдено слов: ${result.count}.`); });
 		this.button('Показать слова', 'Диагностика распознанных записей.', async () => { const items = await this.actions.getVocabularyDiagnostics(); const list = containerEl.querySelector('.translation-trainer-diagnostics') ?? containerEl.createDiv({ cls: 'translation-trainer-diagnostics' }); list.empty(); list.createEl('p', { text: `Распознано: ${items.length}` }); const ul = list.createEl('ul'); for (const item of items.slice(0, 100)) ul.createEl('li', { text: `${item.displayTerm} — ${item.translation}` }); });
 		this.button('Начать упражнение', 'Открыть следующее задание прямо сейчас.', () => this.actions.startExercise());
 		this.button('Открыть статистику', 'Показать графики и рейтинги.', () => this.actions.openStatistics());
 		this.button(settings.paused ? 'Возобновить расписание' : 'Приостановить расписание', 'Временная остановка автоматических заданий.', () => this.actions.togglePause());
+
+		new Setting(containerEl)
+			.setName('Журнал ошибок')
+			.setDesc('Локальный журнал хранится 24 часа без ключей API и полных запросов.')
+			.addButton(button => button.setButtonText('Показать журнал').onClick(async () => {
+				button.setDisabled(true);
+				try {
+					const text = await this.actions.readDiagnosticLog();
+					logText.setText(text || 'Журнал пуст.');
+					logDetails.removeClass('is-hidden');
+					logDetails.open = true;
+				} catch (error) {
+					this.reporter.report(error, 'Не удалось прочитать журнал ошибок.');
+				} finally {
+					button.setDisabled(false);
+				}
+			}));
+		const logDetails = containerEl.createEl('details', { cls: 'translation-trainer-diagnostics' });
+		logDetails.addClass('is-hidden');
+		logDetails.createEl('summary', { text: 'Журнал ошибок за 24 часа' });
+		const logText = logDetails.createEl('pre');
 	}
 
 	private text(name: string, description: string, value: string | number, update: (value: string) => Promise<void>): void {

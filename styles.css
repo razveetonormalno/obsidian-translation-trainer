@@ -61,6 +61,16 @@
 .translation-trainer-replacement { color: var(--text-muted); margin-top: .45rem; }
 .translation-trainer-replacement strong { color: var(--text-normal); }
 .translation-trainer-success-note { color: var(--color-green); margin: 0; }
+.translation-trainer-follow-up { border-top: 1px solid var(--background-modifier-border); margin-top: 1.1rem; padding-top: 1rem; }
+.translation-trainer-follow-up-history { display: flex; flex-direction: column; gap: .6rem; margin-bottom: .75rem; max-height: 18rem; overflow-y: auto; padding-right: .2rem; }
+.translation-trainer-follow-up-message { align-self: flex-start; background: var(--background-secondary); border-radius: var(--radius-l); max-width: min(88%, 42rem); padding: .6rem .75rem; }
+.translation-trainer-follow-up-message.is-user { align-self: flex-end; background: color-mix(in srgb, var(--interactive-accent) 12%, var(--background-secondary)); }
+.translation-trainer-follow-up-author { color: var(--text-muted); display: block; font-size: var(--font-ui-smaller); font-weight: 650; margin-bottom: .2rem; }
+.translation-trainer-follow-up-message p { line-height: 1.5; margin: 0; white-space: pre-wrap; }
+.translation-trainer-follow-up-form { align-items: stretch; display: grid; gap: .55rem; grid-template-columns: minmax(0, 1fr) auto; }
+.translation-trainer-follow-up-input { box-sizing: border-box; line-height: 1.45; min-height: 3.7rem; resize: vertical; width: 100%; }
+.translation-trainer-follow-up-input::placeholder { color: var(--text-faint); opacity: .62; }
+.translation-trainer-follow-up-form button { align-self: end; }
 .translation-trainer-statistics { overflow-x: hidden; padding: 0 8px; }
 .translation-trainer-chart { display: block; height: auto; max-width: 100%; margin-bottom: .35em; }
 .translation-trainer-legend::before { background: var(--series-color); border-radius: 50%; content: ''; display: inline-block; height: .7em; margin: 0 .3em .05em .8em; width: .7em; }
@@ -89,6 +99,8 @@
 	.translation-trainer-score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	.translation-trainer-answer-grid { grid-template-columns: 1fr; }
 	.translation-trainer-criterion-note { grid-template-columns: 1fr; }
+	.translation-trainer-follow-up-form { grid-template-columns: 1fr; }
+	.translation-trainer-follow-up-form button { justify-self: end; }
 }
 @media (max-width: 520px) {
 	.translation-trainer-result-header { align-items: flex-start; }
@@ -100,4 +112,7 @@
 @media (prefers-reduced-motion: reduce) {
 	.translation-trainer-token-indicator, .translation-trainer-token, .translation-trainer-token-cursor { animation: none; }
 	.translation-trainer-interactive-button, .translation-trainer-interactive-button:hover:not(:disabled) { transform: none; transition: none; }
+}
+.translation-trainer-diagnostics.is-hidden {
+	display: none;
 }
