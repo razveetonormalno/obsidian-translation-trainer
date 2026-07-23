@@ -43,7 +43,7 @@ export function mergeSettings(value: unknown): TranslationTrainerSettings {
 	if (!isRecord(value)) return { ...DEFAULT_SETTINGS };
 	const candidate = value as Partial<TranslationTrainerSettings>;
 	return {
-		vocabularyPath: stringOr(candidate.vocabularyPath, DEFAULT_SETTINGS.vocabularyPath),
+		vocabularyPath: markdownPathOr(candidate.vocabularyPath, DEFAULT_SETTINGS.vocabularyPath),
 		vocabularySection: stringOr(candidate.vocabularySection, DEFAULT_SETTINGS.vocabularySection),
 		cefrLevel: isCefrLevel(candidate.cefrLevel) ? candidate.cefrLevel : DEFAULT_SETTINGS.cefrLevel,
 		endpoint: stringOr(candidate.endpoint, DEFAULT_SETTINGS.endpoint),
@@ -66,6 +66,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function stringOr(value: unknown, fallback: string): string {
 	return typeof value === 'string' ? value : fallback;
+}
+
+function markdownPathOr(value: unknown, fallback: string): string {
+	const path = typeof value === 'string' && value.trim() ? value.trim() : fallback;
+	return /\.[^/]+$/u.test(path) ? path : `${path}.md`;
 }
 
 function positiveIntegerOr(value: unknown, fallback: number): number {
