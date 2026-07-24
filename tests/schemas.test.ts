@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { evaluationValidator, generatedQuestionValidator, questionValidator } from '../src/llm/schemas';
 import { GRAMMAR_TOPICS } from '../src/curriculum/topics';
+import { STARTER_BANK_VERSION } from '../src/domain/constants';
+import type { TranslationQuestion } from '../src/domain/types';
 import { parseVocabularyMarkdown } from '../src/vocabulary/parser';
 import { evaluation, question } from './helpers';
 
@@ -17,9 +19,27 @@ describe('strict LLM schemas', () => {
 			vocabulary.map((entry) => entry.canonicalKey),
 		);
 		const lines = readFileSync(new URL('../assets/starter-bank.jsonl', import.meta.url), 'utf8').trim().split(/\r?\n/u);
+		const questions = lines.map((line) => JSON.parse(line) as TranslationQuestion);
 		expect(lines).toHaveLength(30);
-		for (const line of lines) expect(validate(JSON.parse(line) as unknown), JSON.stringify(validate.errors)).toBe(true);
+		expect(new Set(questions.map((item) => item.id)).size).toBe(30);
+		expect(new Set(questions.flatMap((item) => item.targetVocabulary)).size).toBeGreaterThanOrEqual(40);
+		for (const item of questions) expect(validate(item), JSON.stringify(validate.errors)).toBe(true);
 	});
+
+	it('ships the corrected starter bank as version 2', () => {
+		const questions = readStarterQuestions();
+		const byId = new Map(questions.map((item) => [item.id, item]));
+		const answers = (id: string): string => byId.get(id)?.referenceAnswers.join(' ').toLowerCase() ?? '';
+
+		expect(STARTER_BANK_VERSION).toBe(2);
+		expect(answers('starter-b1-003')).toContain('corresponding');
+		expect(answers('starter-b1-006')).not.toContain('conditional term');
+		expect(answers('starter-b1-012')).not.toContain('cull your jacket');
+		expect(answers('starter-b1-021')).toContain('threat denial');
+		expect(answers('starter-b1-025')).toContain('yearning');
+		expect(answers('starter-b1-029')).not.toContain('food is filthy');
+	});
+
 	it('accepts valid immutable and generated questions', () => {
 		expect(questionValidator(topics, words)(question())).toBe(true);
 		const generated = { ...question() } as Record<string, unknown>;
@@ -52,6 +72,13 @@ describe('strict LLM schemas', () => {
 		expect(validator(evaluation({ errors: [missingNullableField as never] }))).toBe(false);
 	});
 });
+
+function readStarterQuestions(): TranslationQuestion[] {
+	return readFileSync(new URL('../assets/starter-bank.jsonl', import.meta.url), 'utf8')
+		.trim()
+		.split(/\r?\n/u)
+		.map((line) => JSON.parse(line) as TranslationQuestion);
+}
 
 function expectStrictObjectSchema(value: unknown): void {
 	if (!isRecord(value)) return;

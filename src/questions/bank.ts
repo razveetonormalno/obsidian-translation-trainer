@@ -6,8 +6,8 @@ import type { QuestionBankSnapshot } from './types';
 export class QuestionBankService {
 	constructor(private readonly store: TranslationTrainerFileStore) {}
 
-	async initializeStarterBank(serializedJsonl: string): Promise<boolean> {
-		return this.store.initializeStarterBank(serializedJsonl);
+	async initializeStarterBank(serializedJsonl: string, version: number): Promise<boolean> {
+		return this.store.initializeStarterBank(serializedJsonl, version);
 	}
 
 	async load(): Promise<QuestionBankSnapshot> {

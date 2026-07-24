@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { JsonlStore } from '../src/storage/jsonl';
 import { createDefaultPluginData, migratePluginData, PluginDataStore } from '../src/storage/model';
+import { TranslationTrainerFileStore } from '../src/storage/repository';
 
 class MemoryAdapter {
 	readonly files = new Map<string, string>();
@@ -9,6 +10,7 @@ class MemoryAdapter {
 	async mkdir(path: string): Promise<void> { this.directories.add(path); }
 	async append(path: string, text: string): Promise<void> { await Promise.resolve(); this.files.set(path, `${this.files.get(path) ?? ''}${text}`); }
 	async read(path: string): Promise<string> { return this.files.get(path) ?? ''; }
+	async write(path: string, text: string): Promise<void> { this.files.set(path, text); }
 }
 
 describe('plugin-data migration', () => {
@@ -37,5 +39,34 @@ describe('JsonlStore', () => {
 		const records = await store.readValidLines('records.jsonl', (value): value is { index: number } => typeof value === 'object' && value !== null && typeof (value as { index?: unknown }).index === 'number');
 		expect(records.map((item) => item.index)).toEqual(Array.from({ length: 20 }, (_, index) => index));
 		expect(diagnostics).toHaveLength(2);
+	});
+});
+
+describe('starter bank updates', () => {
+	it('installs once and replaces only the starter bank after a version bump', async () => {
+		const adapter = new MemoryAdapter();
+		const store = new TranslationTrainerFileStore(adapter as never);
+		const starterPath = store.questionBankPath('starter');
+		const importedPath = store.questionBankPath('imported');
+		adapter.files.set(importedPath, '{"id":"imported"}\n');
+
+		expect(await store.initializeStarterBank('{"id":"starter-v1"}', 1)).toBe(true);
+		expect(adapter.files.get(starterPath)).toBe('{"id":"starter-v1"}\n');
+		expect(await store.initializeStarterBank('{"id":"changed-without-bump"}', 1)).toBe(false);
+		expect(adapter.files.get(starterPath)).toBe('{"id":"starter-v1"}\n');
+
+		expect(await store.initializeStarterBank('{"id":"starter-v2"}', 2)).toBe(true);
+		expect(adapter.files.get(starterPath)).toBe('{"id":"starter-v2"}\n');
+		expect(adapter.files.get(importedPath)).toBe('{"id":"imported"}\n');
+		expect(JSON.parse(adapter.files.get(store.starterBankVersionPath()) ?? '')).toEqual({ version: 2 });
+	});
+
+	it('upgrades a legacy bank that has no version marker', async () => {
+		const adapter = new MemoryAdapter();
+		const store = new TranslationTrainerFileStore(adapter as never);
+		adapter.files.set(store.questionBankPath('starter'), '{"id":"legacy"}\n');
+
+		expect(await store.initializeStarterBank('{"id":"bundled"}', 1)).toBe(true);
+		expect(adapter.files.get(store.questionBankPath('starter'))).toBe('{"id":"bundled"}\n');
 	});
 });

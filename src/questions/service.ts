@@ -1,4 +1,5 @@
 import starterBank from '../../assets/starter-bank.jsonl';
+import { STARTER_BANK_VERSION } from '../domain/constants';
 import type { TranslationQuestion } from '../domain/types';
 import type { TranslationTrainerFileStore } from '../storage/repository';
 import { QuestionBankService } from './bank';
@@ -43,7 +44,9 @@ export class QuestionService {
 		this.starterBankJsonl = dependencies.starterBankJsonl ?? starterBank;
 	}
 
-	async initialize(): Promise<boolean> { return this.bank.initializeStarterBank(this.starterBankJsonl); }
+	async initialize(): Promise<boolean> {
+		return this.bank.initializeStarterBank(this.starterBankJsonl, STARTER_BANK_VERSION);
+	}
 	async loadBanks(): Promise<QuestionBankSnapshot> { return this.bank.load(); }
 	async importJsonl(serializedJsonl: string): Promise<ImportResult> { return this.importer.importJsonl(serializedJsonl); }
 	async generate(context: GenerationContext): Promise<GeneratedQuestion> { return this.generator.generate(context); }

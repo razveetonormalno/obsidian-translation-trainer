@@ -7,9 +7,11 @@ export type QuestionBankName = 'starter' | 'imported' | 'generated';
 
 export class TranslationTrainerFileStore {
 	private readonly jsonl: JsonlStore;
+	private readonly report: StorageDiagnosticReporter;
 
 	constructor(private readonly adapter: DataAdapter, report?: StorageDiagnosticReporter) {
-		this.jsonl = new JsonlStore(adapter, report);
+		this.report = report ?? (() => undefined);
+		this.jsonl = new JsonlStore(adapter, this.report);
 	}
 
 	async ensureServiceDirectories(): Promise<void> {
@@ -27,12 +29,17 @@ export class TranslationTrainerFileStore {
 		return this.jsonl.readValidLines(this.questionBankPath(bank), isTranslationQuestion);
 	}
 
-	/** Writes the bundled starter JSONL once; user-imported banks are never overwritten. */
-	async initializeStarterBank(serializedJsonl: string): Promise<boolean> {
+	/**
+	 * Installs or upgrades the bundled starter bank. Its version marker lives beside
+	 * the device-local bank so synchronized plugin settings cannot skip an upgrade.
+	 */
+	async initializeStarterBank(serializedJsonl: string, version: number): Promise<boolean> {
 		await this.ensureServiceDirectories();
 		const path = this.questionBankPath('starter');
-		if (await this.adapter.exists(path)) return false;
+		const installedVersion = await this.readStarterBankVersion();
+		if (await this.adapter.exists(path) && installedVersion >= version) return false;
 		await this.adapter.write(path, serializedJsonl.endsWith('\n') ? serializedJsonl : `${serializedJsonl}\n`);
+		await this.adapter.write(this.starterBankVersionPath(), `${JSON.stringify({ version })}\n`);
 		return true;
 	}
 
@@ -58,10 +65,30 @@ export class TranslationTrainerFileStore {
 		return `${QUESTION_BANK_DIRECTORY}/${bank}.jsonl`;
 	}
 
+	starterBankVersionPath(): string {
+		return `${QUESTION_BANK_DIRECTORY}/starter.version.json`;
+	}
+
 	attemptPath(timestamp: string): string {
 		const date = new Date(timestamp);
 		if (Number.isNaN(date.getTime())) throw new Error('Неверная дата попытки.');
 		return `${ATTEMPTS_DIRECTORY}/${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}.jsonl`;
+	}
+
+	private async readStarterBankVersion(): Promise<number> {
+		const path = this.starterBankVersionPath();
+		if (!(await this.adapter.exists(path))) return 0;
+		try {
+			const parsed: unknown = JSON.parse(await this.adapter.read(path));
+			if (isRecord(parsed) && typeof parsed.version === 'number' &&
+				Number.isInteger(parsed.version) && parsed.version >= 0) {
+				return parsed.version;
+			}
+		} catch {
+			// The diagnostic below covers malformed JSON and an invalid marker shape.
+		}
+		this.report({ path, message: 'Маркер версии встроенного банка повреждён; банк будет обновлён.' });
+		return 0;
 	}
 }
 

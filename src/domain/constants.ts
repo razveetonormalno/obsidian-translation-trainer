@@ -1,6 +1,7 @@
 export const CURRENT_DATA_SCHEMA_VERSION = 1;
 export const QUESTION_SCHEMA_VERSION = 1;
 export const ATTEMPT_SCHEMA_VERSION = 1;
+export const STARTER_BANK_VERSION = 2;
 export const GENERATE_QUESTION_PROMPT_VERSION = 1;
 export const EVALUATE_ANSWER_PROMPT_VERSION = 1;
 export const EMA_ALPHA = 0.2;
