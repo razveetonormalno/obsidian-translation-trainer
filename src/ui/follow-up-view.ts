@@ -1,8 +1,11 @@
+import { MarkdownRenderer, type App, type Component } from 'obsidian';
 import type { FollowUpMessage } from '../domain/types';
 import { enhanceButtonMotion } from './button-motion';
 import { createTokenStream, type TokenStreamAnimation } from './token-stream';
 
 export interface FollowUpViewOptions {
+	app: App;
+	component: Component;
 	messages: readonly FollowUpMessage[];
 	draft: string;
 	loading: boolean;
@@ -20,7 +23,13 @@ export function renderFollowUpView(parent: HTMLElement, options: FollowUpViewOpt
 		for (const message of options.messages) {
 			const item = history.createDiv({ cls: `translation-trainer-follow-up-message is-${message.role}` });
 			item.createSpan({ text: message.role === 'user' ? 'Вы' : 'Преподаватель', cls: 'translation-trainer-follow-up-author' });
-			item.createEl('p', { text: message.content });
+			if (message.role === 'assistant') {
+				const body = item.createDiv({ cls: 'translation-trainer-follow-up-markdown' });
+				void MarkdownRenderer.render(options.app, message.content, body, '', options.component)
+					.catch(() => { body.empty(); body.setText(message.content); });
+			} else {
+				item.createEl('p', { text: message.content });
+			}
 		}
 	}
 

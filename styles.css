@@ -67,6 +67,11 @@
 .translation-trainer-follow-up-message.is-user { align-self: flex-end; background: color-mix(in srgb, var(--interactive-accent) 12%, var(--background-secondary)); }
 .translation-trainer-follow-up-author { color: var(--text-muted); display: block; font-size: var(--font-ui-smaller); font-weight: 650; margin-bottom: .2rem; }
 .translation-trainer-follow-up-message p { line-height: 1.5; margin: 0; white-space: pre-wrap; }
+.translation-trainer-follow-up-markdown { line-height: 1.5; }
+.translation-trainer-follow-up-markdown > :first-child { margin-top: 0; }
+.translation-trainer-follow-up-markdown > :last-child { margin-bottom: 0; }
+.translation-trainer-follow-up-markdown ul, .translation-trainer-follow-up-markdown ol { padding-inline-start: 1.5rem; }
+.translation-trainer-follow-up-markdown pre { max-width: 100%; overflow-x: auto; }
 .translation-trainer-follow-up-form { align-items: stretch; display: grid; gap: .55rem; grid-template-columns: minmax(0, 1fr) auto; }
 .translation-trainer-follow-up-input { box-sizing: border-box; line-height: 1.45; min-height: 3.7rem; resize: vertical; width: 100%; }
 .translation-trainer-follow-up-input::placeholder { color: var(--text-faint); opacity: .62; }

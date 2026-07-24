@@ -1,4 +1,4 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Component, Modal, Notice } from 'obsidian';
 import type { FollowUpMessage, TranslationEvaluation, TranslationQuestion } from '../domain/types';
 import { enhanceButtonMotion } from './button-motion';
 import { ErrorReporter } from './error-reporter';
@@ -37,6 +37,7 @@ export class TranslationModal extends Modal {
 	private followUpMessages: FollowUpMessage[] = [];
 	private followUpDiagnostic?: string;
 	private askingFollowUp = false;
+	private markdownComponent?: Component;
 
 	constructor(app: App, private readonly options: TranslationModalOptions) {
 		super(app);
@@ -44,11 +45,12 @@ export class TranslationModal extends Modal {
 	}
 
 	onOpen(): void { applyModalWidth(this.modalEl, this.options.widthPx); this.removeOutsideClickGuard = guardAgainstOutsideClick(this.containerEl, this.modalEl); this.render(); }
-	onClose(): void { this.removeOutsideClickGuard?.(); this.removeOutsideClickGuard = undefined; this.stopTokenStream(); this.options.actions.onClose?.(); }
+	onClose(): void { this.removeOutsideClickGuard?.(); this.removeOutsideClickGuard = undefined; this.stopTokenStream(); this.unloadMarkdown(); this.options.actions.onClose?.(); }
 
 	private render(): void {
 		const { contentEl } = this;
 		this.stopTokenStream();
+		this.unloadMarkdown();
 		contentEl.empty();
 		contentEl.addClass('translation-trainer-modal');
 		contentEl.createEl('h2', { text: 'Перевод на английский' });
@@ -114,6 +116,8 @@ export class TranslationModal extends Modal {
 	private renderResult(contentEl: HTMLElement, result: TranslationEvaluation): void {
 		renderTranslationResult(contentEl, result, this.answer);
 		this.tokenStream = renderFollowUpView(contentEl, {
+			app: this.app,
+			component: this.loadMarkdown(),
 			messages: this.followUpMessages,
 			draft: this.followUpDraft,
 			loading: this.askingFollowUp,
@@ -168,6 +172,8 @@ export class TranslationModal extends Modal {
 	}
 
 	private stopTokenStream(): void { this.tokenStream?.stop(); this.tokenStream = undefined; }
+	private loadMarkdown(): Component { const component = new Component(); component.load(); this.markdownComponent = component; return component; }
+	private unloadMarkdown(): void { this.markdownComponent?.unload(); this.markdownComponent = undefined; }
 }
 
 export class LoadingModal extends Modal {

@@ -42,7 +42,7 @@ export function followUpSystemPrompt(request: FollowUpRequest): string {
 		`Corrected translation: ${request.evaluation.correctedTranslation}`,
 		`Evaluation summary: ${request.evaluation.summaryRu}`,
 		`Errors: ${request.evaluation.errors.map(error => `${error.fragment}: ${error.explanationRu}${error.replacement ? ` -> ${error.replacement}` : ''}`).join(' | ') || 'none'}`,
-		'Do not return JSON, Markdown code fences, or hidden reasoning. Return only the tutor response.',
+		'Return only the tutor response using concise Markdown when it improves readability. Do not return JSON or hidden reasoning.',
 	].join('\n');
 }
 

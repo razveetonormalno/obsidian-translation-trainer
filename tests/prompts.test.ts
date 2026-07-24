@@ -15,6 +15,7 @@ describe('follow-up prompt', () => {
 		expect(prompt).toContain('Исходная фраза');
 		expect(prompt).toContain('Student wording');
 		expect(prompt).toContain('Corrected wording');
+		expect(prompt).toContain('Markdown');
 		expect(prompt).not.toContain('Earlier private follow-up');
 	});
 });
