@@ -23,7 +23,7 @@ export interface TranslationTrainerSettings {
 }
 
 export const DEFAULT_SETTINGS: Readonly<TranslationTrainerSettings> = {
-	vocabularyPath: 'Study/English/Interesting Words.md',
+	vocabularyPath: '',
 	vocabularySection: '',
 	cefrLevel: 'B1',
 	endpoint: 'http://127.0.0.1:8080/v1',
@@ -60,6 +60,10 @@ export function mergeSettings(value: unknown): TranslationTrainerSettings {
 	};
 }
 
+export function isVocabularyConfigured(settings: Pick<TranslationTrainerSettings, 'vocabularyPath'>): boolean {
+	return settings.vocabularyPath.trim().length > 0;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null;
 }
@@ -69,7 +73,8 @@ function stringOr(value: unknown, fallback: string): string {
 }
 
 function markdownPathOr(value: unknown, fallback: string): string {
-	const path = typeof value === 'string' && value.trim() ? value.trim() : fallback;
+	const path = typeof value === 'string' ? value.trim() : fallback;
+	if (!path) return '';
 	return /\.[^/]+$/u.test(path) ? path : `${path}.md`;
 }
 

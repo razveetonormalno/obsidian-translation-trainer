@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, MAX_EXERCISE_MODAL_WIDTH, mergeSettings, MIN_EXERCISE_MODAL_WIDTH } from '../src/settings/model';
+import {
+	DEFAULT_SETTINGS,
+	isVocabularyConfigured,
+	MAX_EXERCISE_MODAL_WIDTH,
+	mergeSettings,
+	MIN_EXERCISE_MODAL_WIDTH,
+} from '../src/settings/model';
 import { ApiKeyStore } from '../src/settings/secrets';
 import { DeviceLlmSettingsStore, settingsForVault } from '../src/settings/device';
+import { rankMarkdownNotePaths } from '../src/settings/note-suggestions';
 
 describe('settings', () => {
 	it('keeps a valid exercise window width', () => {
@@ -16,6 +23,28 @@ describe('settings', () => {
 	it('repairs a synchronized vocabulary path without the markdown extension', () => {
 		expect(mergeSettings({ vocabularyPath: 'Study/English/Interesting Words' }).vocabularyPath)
 			.toBe('Study/English/Interesting Words.md');
+	});
+
+	it('starts with no vocabulary note and preserves an explicit empty selection', () => {
+		expect(DEFAULT_SETTINGS.vocabularyPath).toBe('');
+		expect(mergeSettings({}).vocabularyPath).toBe('');
+		expect(mergeSettings({ vocabularyPath: '   ' }).vocabularyPath).toBe('');
+		expect(isVocabularyConfigured(mergeSettings({}))).toBe(false);
+		expect(isVocabularyConfigured(mergeSettings({ vocabularyPath: 'Words.md' }))).toBe(true);
+	});
+
+	it('ranks matching Markdown notes while the user types', () => {
+		const paths = [
+			'Projects/Meeting notes.md',
+			'Study/English/Interesting Words.md',
+			'Study/English/Grammar.md',
+		];
+		expect(rankMarkdownNotePaths(paths, 'interesting')).toEqual([
+			'Study/English/Interesting Words.md',
+		]);
+		expect(rankMarkdownNotePaths(paths, 'int wrd')).toEqual([
+			'Study/English/Interesting Words.md',
+		]);
 	});
 });
 

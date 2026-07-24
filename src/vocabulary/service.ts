@@ -13,14 +13,21 @@ export class VocabularyService {
 	constructor(private readonly vault: Pick<Vault, 'getAbstractFileByPath' | 'read'>) {}
 
 	async reindex(sourcePath: string, section = ''): Promise<VocabularyIndex> {
+		const index = await this.buildIndex(sourcePath, section);
+		this.index = index;
+		return index;
+	}
+
+	async buildIndex(sourcePath: string, section = ''): Promise<VocabularyIndex> {
 		const file = this.vault.getAbstractFileByPath(sourcePath);
 		if (!(file instanceof TFile)) throw new Error(`Vocabulary source was not found: ${sourcePath}`);
 		const markdown = await this.vault.read(file);
 		const selected = selectMarkdownSection(markdown, section);
 		if (section.trim() && !selected) throw new Error(`Vocabulary section was not found: ${section}`);
-		this.index = new VocabularyIndex(parseVocabularyMarkdown(selected, sourcePath));
-		return this.index;
+		return new VocabularyIndex(parseVocabularyMarkdown(selected, sourcePath));
 	}
+	use(index: VocabularyIndex): void { this.index = index; }
+	clear(): void { this.index = new VocabularyIndex(); }
 	get entries(): VocabularyEntry[] { return this.index.values(); }
 	get currentIndex(): VocabularyIndex { return this.index; }
 }

@@ -14,6 +14,13 @@ class MemoryAdapter {
 }
 
 describe('plugin-data migration', () => {
+	it('creates a clean installation without a preselected vocabulary note', () => {
+		const data = createDefaultPluginData();
+		expect(data.settings.vocabularyPath).toBe('');
+		expect(data.questionProgress).toEqual({});
+		expect(data.scheduler.automaticShownCount).toBe(0);
+	});
+
 	it('is idempotent and sanitizes invalid persisted fields', async () => {
 		const raw = { settings: { level: 'B1', timeoutMs: -1 }, questionProgress: { good: { status: 'review', dueAt: 'x', intervalMinutes: 1, successStreak: 1, successfulReviews: 1, lapses: 0 }, bad: { status: 'nope' } }, scheduler: { automaticShownCount: -1 }, statisticsCache: { attemptCount: 2.3 } };
 		const migrated = migratePluginData(raw);

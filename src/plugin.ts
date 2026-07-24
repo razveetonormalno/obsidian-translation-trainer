@@ -23,6 +23,7 @@ import {
 import {
 	ApiKeyStore,
 	DeviceLlmSettingsStore,
+	isVocabularyConfigured,
 	mergeSettings,
 	pickDeviceLlmSettings,
 	settingsForVault,
@@ -61,7 +62,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 	private synchronizedLlmFallback!: DeviceLlmSettings;
 	private vocabulary!: VocabularyService;
 	private provider!: LlmProvider;
-	private questions!: QuestionService;
+	private questions?: QuestionService;
 	private statistics!: StatisticsService;
 	private scheduler!: ReviewScheduler;
 	private reporter = new ErrorReporter();
@@ -69,6 +70,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 	private modalOpen = false;
 	private sessionQueue: TranslationQuestion[] = [];
 	private reindexTimer?: number;
+	private vocabularyRevision = 0;
 
 	async onload(): Promise<void> {
 		this.dataStore = new PluginDataStore(this);
@@ -90,8 +92,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 		});
 		await this.fileStore.ensureServiceDirectories();
 		this.vocabulary = new VocabularyService(this.app.vault);
-		await this.safeReindexVocabulary();
-		await this.rebuildRuntimeServices();
+		this.rebuildProvider();
 		this.statistics = new StatisticsService(this.fileStore);
 
 		this.registerView(
@@ -104,7 +105,6 @@ export default class TranslationTrainerPlugin extends Plugin {
 		);
 		this.addSettingTab(new TranslationTrainerSettingsTab(this.app, this, this.settingsActions(), this.reporter));
 		this.registerCommands();
-		this.registerVocabularyEvents();
 
 		this.scheduler = new ReviewScheduler({
 			getSettings: () => this.data.settings,
@@ -118,6 +118,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 			showAutomaticExercise: () => this.openExercise(false, false),
 		});
 		this.registerInterval(window.setInterval(() => {
+			if (!this.questions) return;
 			void this.scheduler.check().catch((error: unknown) => this.reporter.report(error, 'Не удалось проверить расписание упражнений.'));
 		}, 60_000));
 		this.registerInterval(window.setInterval(() => {
@@ -125,6 +126,12 @@ export default class TranslationTrainerPlugin extends Plugin {
 		}, 60 * 60_000));
 		this.register(() => {
 			if (this.reindexTimer !== undefined) window.clearTimeout(this.reindexTimer);
+		});
+		this.app.workspace.onLayoutReady(() => {
+			this.registerVocabularyEvents();
+			void this.safeReindexVocabulary().catch((error: unknown) => {
+				this.reporter.report(error, 'Не удалось запустить Translation Trainer.');
+			});
 		});
 	}
 
@@ -164,11 +171,17 @@ export default class TranslationTrainerPlugin extends Plugin {
 		this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
 			if (oldPath !== this.data.settings.vocabularyPath) return;
 			this.data.settings.vocabularyPath = file.path;
-			void this.savePluginData().then(() => this.safeReindexVocabulary());
+			void this.savePluginData()
+				.then(() => this.safeReindexVocabulary())
+				.catch((error: unknown) => this.reporter.report(error, 'Не удалось обновить путь к заметке со словами.'));
 		}));
 		this.registerEvent(this.app.vault.on('delete', (file) => {
 			if (file.path === this.data.settings.vocabularyPath) {
-				this.reporter.report(new Error('Vocabulary source deleted.'), 'Файл со словами был удалён. Выберите новый файл в настройках.');
+				this.data.settings.vocabularyPath = '';
+				this.deactivateVocabularyRuntime();
+				void this.savePluginData()
+					.then(() => new Notice('Файл со словами был удалён. Упражнения отключены до выбора новой заметки.'))
+					.catch((error: unknown) => this.reporter.report(error, 'Не удалось сохранить очистку пути к заметке со словами.'));
 			}
 		}));
 	}
@@ -182,38 +195,66 @@ export default class TranslationTrainerPlugin extends Plugin {
 	}
 
 	private async safeReindexVocabulary(): Promise<number> {
+		this.deactivateVocabularyRuntime();
+		const revision = this.vocabularyRevision;
+		if (!isVocabularyConfigured(this.data.settings)) {
+			return 0;
+		}
 		try {
-			const index = await this.vocabulary.reindex(
+			const index = await this.vocabulary.buildIndex(
 				this.data.settings.vocabularyPath,
 				this.data.settings.vocabularySection,
 			);
-			if (this.questions) await this.rebuildRuntimeServices();
+			if (revision !== this.vocabularyRevision) return 0;
+			this.vocabulary.use(index);
+			await this.rebuildRuntimeServices(revision);
 			return index.size;
 		} catch (error) {
-			this.reporter.report(error, 'Не удалось прочитать заметку со словами.');
+			if (revision !== this.vocabularyRevision) return 0;
+			this.deactivateVocabularyRuntime();
+			this.reporter.report(error, 'Не удалось подготовить заметку со словами.');
 			return 0;
 		}
 	}
 
-	private async rebuildRuntimeServices(): Promise<void> {
+	private async rebuildRuntimeServices(expectedVocabularyRevision = this.vocabularyRevision): Promise<void> {
+		this.rebuildProvider();
+		const topicIds = GRAMMAR_TOPICS.map((topic) => topic.id);
+		const vocabularyKeys = this.vocabulary.entries.map((entry) => entry.canonicalKey);
+		const questions = new QuestionService({
+			store: this.fileStore,
+			provider: this.provider,
+			topics: GRAMMAR_TOPICS,
+			validateQuestion: questionValidator(topicIds, vocabularyKeys),
+		});
+		await questions.initialize();
+		if (expectedVocabularyRevision === this.vocabularyRevision &&
+			isVocabularyConfigured(this.data.settings)) {
+			this.questions = questions;
+		}
+	}
+
+	private rebuildProvider(): void {
 		this.provider = new OpenAiCompatibleProvider({
 			baseUrl: this.data.settings.endpoint,
 			model: this.data.settings.model,
 			apiKey: this.apiKeys.get() ?? undefined,
 			timeoutMs: this.data.settings.timeoutMs,
 		});
-		const topicIds = GRAMMAR_TOPICS.map((topic) => topic.id);
-		const vocabularyKeys = this.vocabulary.entries.map((entry) => entry.canonicalKey);
-		this.questions = new QuestionService({
-			store: this.fileStore,
-			provider: this.provider,
-			topics: GRAMMAR_TOPICS,
-			validateQuestion: questionValidator(topicIds, vocabularyKeys),
-		});
-		await this.questions.initialize();
+	}
+
+	private deactivateVocabularyRuntime(): void {
+		this.vocabularyRevision += 1;
+		this.questions = undefined;
+		this.vocabulary.clear();
 	}
 
 	private async openExercise(manual: boolean, sessionMode: boolean): Promise<boolean> {
+		const questions = this.questions;
+		if (!questions) {
+			if (manual) new Notice('Сначала выберите заметку со словами в настройках плагина.');
+			return false;
+		}
 		if (this.modalOpen) {
 			if (manual) new Notice('Окно упражнения уже открыто.');
 			return false;
@@ -231,7 +272,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 		try {
 			let question: TranslationQuestion | undefined;
 			if (sessionMode) {
-				const all = await this.questions.allQuestions();
+				const all = await questions.allQuestions();
 				this.sessionQueue = buildReviewQueue(all, this.data.questionProgress);
 				question = this.sessionQueue.shift();
 				if (!question) {
@@ -269,11 +310,12 @@ export default class TranslationTrainerPlugin extends Plugin {
 	}
 
 	private async nextAdaptiveQuestion(allowEarlyReview: boolean): Promise<TranslationQuestion> {
-		const all = await this.questions.allQuestions();
+		const questions = this.requireQuestionService();
+		const all = await questions.allQuestions();
 		const result = await this.statistics.rebuild(all, { period: 'all' });
 		const statistics = this.statistics.selectionStatistics(result.snapshot);
 		const recent = recentQuestionIds(result.snapshot.attempts);
-		return (await this.questions.next({
+		return (await questions.next({
 			level: this.data.settings.cefrLevel,
 			vocabulary: this.vocabulary.entries,
 			progress: this.data.questionProgress,
@@ -340,9 +382,11 @@ export default class TranslationTrainerPlugin extends Plugin {
 	}
 
 	private async loadStatistics(period: StatisticsPeriod): Promise<StatisticsSnapshot> {
+		const questions = this.questions;
+		if (!questions) return buildStatisticsSnapshot([], { period });
 		try {
-			const questions = await this.questions.allQuestions();
-			const result = await this.statistics.rebuild(questions, { period });
+			const allQuestions = await questions.allQuestions();
+			const result = await this.statistics.rebuild(allQuestions, { period });
 			return withTopicLabels(result.snapshot);
 		} catch (error) {
 			this.reporter.report(error, 'Не удалось загрузить статистику.');
@@ -369,20 +413,29 @@ export default class TranslationTrainerPlugin extends Plugin {
 				}
 				await this.savePluginData();
 				if (previousPath !== this.data.settings.vocabularyPath || previousSection !== this.data.settings.vocabularySection) {
-					await this.safeReindexVocabulary();
-				} else {
-					await this.rebuildRuntimeServices();
+					if (this.app.workspace.layoutReady) await this.safeReindexVocabulary();
+				} else if ('endpoint' in patch || 'model' in patch || 'timeoutMs' in patch) {
+					const runtimeWasActive = this.questions !== undefined;
+					this.rebuildProvider();
+					if (runtimeWasActive) await this.rebuildRuntimeServices();
 				}
 			},
 			setApiKey: async (value) => {
 				this.apiKeys.set(value);
-				await this.rebuildRuntimeServices();
+				const runtimeWasActive = this.questions !== undefined;
+				this.rebuildProvider();
+				if (runtimeWasActive) await this.rebuildRuntimeServices();
 			},
 			hasApiKey: async () => this.apiKeys.get() !== null,
 			testConnection: async () => this.provider.testConnection(),
 			readDiagnosticLog: () => this.diagnosticLog.readText(),
 			importQuestionBank: () => this.importActiveQuestionBank(),
-			reindexVocabulary: async () => ({ count: await this.safeReindexVocabulary() }),
+			reindexVocabulary: async () => {
+				if (!isVocabularyConfigured(this.data.settings)) {
+					throw userError('Сначала выберите заметку со словами в настройках плагина.');
+				}
+				return { count: await this.safeReindexVocabulary() };
+			},
 			getVocabularyDiagnostics: async () => this.vocabulary.entries.map(({ displayTerm, translation }) => ({ displayTerm, translation })),
 			startExercise: async () => { await this.openExercise(true, false); },
 			openStatistics: () => this.openStatistics(),
@@ -391,15 +444,20 @@ export default class TranslationTrainerPlugin extends Plugin {
 	}
 
 	private async importActiveQuestionBank(): Promise<void> {
+		const questions = this.requireQuestionService();
 		const file = this.app.workspace.getActiveFile();
 		if (!(file instanceof TFile) || file.extension.toLocaleLowerCase() !== 'jsonl') {
 			throw userError('Откройте JSONL-файл банка в Obsidian и повторите импорт.');
 		}
-		const result = await this.questions.importJsonl(await this.app.vault.read(file));
+		const result = await questions.importJsonl(await this.app.vault.read(file));
 		new Notice(`Импортировано: ${result.accepted}. Пропущено: ${result.skipped}.`);
 	}
 
 	private async reindexVocabularyWithNotice(): Promise<void> {
+		if (!isVocabularyConfigured(this.data.settings)) {
+			new Notice('Сначала выберите заметку со словами в настройках плагина.');
+			return;
+		}
 		const count = await this.safeReindexVocabulary();
 		new Notice(`Распознано слов: ${count}.`);
 	}
@@ -415,6 +473,13 @@ export default class TranslationTrainerPlugin extends Plugin {
 			...this.data,
 			settings: settingsForVault(this.data.settings, this.synchronizedLlmFallback),
 		});
+	}
+
+	private requireQuestionService(): QuestionService {
+		if (!this.questions) {
+			throw userError('Сначала выберите заметку со словами в настройках плагина.');
+		}
+		return this.questions;
 	}
 }
 

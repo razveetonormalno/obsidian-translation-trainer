@@ -1,7 +1,8 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 import type { CefrLevel } from '../domain/types';
 import { MAX_EXERCISE_MODAL_WIDTH, MIN_EXERCISE_MODAL_WIDTH, type SchedulerMode, type TranslationTrainerSettings } from './model';
 import { ErrorReporter } from '../ui/error-reporter';
+import { MarkdownNoteSuggest } from './note-suggest';
 
 export interface SettingsTabActions {
 	settings(): TranslationTrainerSettings;
@@ -19,9 +20,12 @@ export interface SettingsTabActions {
 }
 
 export class TranslationTrainerSettingsTab extends PluginSettingTab {
+	private vocabularySuggest?: MarkdownNoteSuggest;
+
 	constructor(app: App, plugin: Plugin, private readonly actions: SettingsTabActions, private readonly reporter: ErrorReporter) { super(app, plugin); }
 
 	display(): void {
+		this.vocabularySuggest?.close();
 		const { containerEl } = this; containerEl.empty();
 		const settings = this.actions.settings();
 		new Setting(containerEl).setName('Настройки').setHeading();
@@ -44,7 +48,7 @@ export class TranslationTrainerSettingsTab extends PluginSettingTab {
 				.onChange(value => this.run(() => this.actions.update({ exerciseModalWidth: value }))));
 
 		new Setting(containerEl).setName('Словарь и уровень').setHeading();
-		this.text('Файл со словами', 'Путь внутри vault.', settings.vocabularyPath, value => this.updateText('vocabularyPath', value));
+		this.vocabularyFile(settings.vocabularyPath);
 		this.text('Раздел заметки', 'Оставьте пустым, чтобы читать всю заметку.', settings.vocabularySection, value => this.updateText('vocabularySection', value));
 		new Setting(containerEl).setName('Уровень английского').setDesc('Шкала уровней владения языком.').addDropdown(dropdown => { for (const level of ['A1', 'A2', 'B1', 'B2', 'C1'] as const) dropdown.addOption(level, level); dropdown.setValue(settings.cefrLevel).onChange(value => this.run(() => this.actions.update({ cefrLevel: value as CefrLevel }))); });
 
@@ -138,6 +142,48 @@ export class TranslationTrainerSettingsTab extends PluginSettingTab {
 		const logText = logDetails.createEl('pre');
 	}
 
+	hide(): void {
+		this.vocabularySuggest?.close();
+		this.vocabularySuggest = undefined;
+		super.hide();
+	}
+
+	private vocabularyFile(value: string): void {
+		let setInputValue = (_next: string): void => undefined;
+		let setClearDisabled = (_disabled: boolean): void => undefined;
+		new Setting(this.containerEl)
+			.setName('Файл со словами')
+			.setDesc('Начните вводить название Markdown-заметки и выберите её из списка. Пока заметка не выбрана, упражнения отключены.')
+			.addText(text => {
+				text
+					.setPlaceholder('Заметка не выбрана')
+					.setValue(value)
+					.onChange(next => {
+						setClearDisabled(next.trim() === '');
+						const normalized = normalizeExistingMarkdownPath(this.app, next);
+						if (next.trim() === '' || normalized) {
+							void this.run(() => this.actions.update({ vocabularyPath: normalized ?? '' }));
+						}
+					});
+				setInputValue = next => { text.setValue(next); };
+				this.vocabularySuggest = new MarkdownNoteSuggest(this.app, text.inputEl, path => {
+					setClearDisabled(false);
+					void this.run(() => this.actions.update({ vocabularyPath: path }));
+				});
+			})
+			.addButton(button => {
+				setClearDisabled = disabled => { button.setDisabled(disabled); };
+				button
+					.setButtonText('Очистить')
+					.setDisabled(!value)
+					.onClick(() => {
+						setInputValue('');
+						setClearDisabled(true);
+						void this.run(() => this.actions.update({ vocabularyPath: '' }));
+					});
+			});
+	}
+
 	private text(name: string, description: string, value: string | number, update: (value: string) => Promise<void>): void {
 		new Setting(this.containerEl).setName(name).setDesc(description).addText(text => text.setValue(String(value)).onChange(next => this.run(() => update(next))));
 	}
@@ -145,4 +191,11 @@ export class TranslationTrainerSettingsTab extends PluginSettingTab {
 	private async updateText(key: 'vocabularyPath' | 'vocabularySection' | 'quietHoursStart' | 'quietHoursEnd' | 'endpoint' | 'model', value: string): Promise<void> { await this.actions.update({ [key]: value }); }
 	private async updateNumber(key: 'cadenceMinutes' | 'minimumIntervalMinutes' | 'dailyAutomaticLimit' | 'timeoutMs', value: string): Promise<void> { const number = Number(value); if (!Number.isInteger(number) || number <= 0) { new Notice('Введите положительное целое число.'); return; } await this.actions.update({ [key]: number }); }
 	private async run(action: () => Promise<void>): Promise<void> { try { await action(); } catch (error) { this.reporter.report(error); } }
+}
+
+function normalizeExistingMarkdownPath(app: App, value: string): string | undefined {
+	const path = value.trim();
+	if (!path) return undefined;
+	const normalized = /\.[^/]+$/u.test(path) ? path : `${path}.md`;
+	return app.vault.getAbstractFileByPath(normalized) instanceof TFile ? normalized : undefined;
 }
