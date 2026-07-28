@@ -4,6 +4,13 @@ export type SchedulerMode = 'active' | 'background';
 
 export const MIN_EXERCISE_MODAL_WIDTH = 520;
 export const MAX_EXERCISE_MODAL_WIDTH = 1200;
+export const SUGGESTED_MODELS = [
+	'qwen3-8b',
+	'gemma-3-12b-it',
+	'gpt-5.4-mini',
+	'gpt-5.6-luna',
+	'gpt-5.6-terra',
+] as const;
 
 export interface TranslationTrainerSettings {
 	vocabularyPath: string;
@@ -27,7 +34,7 @@ export const DEFAULT_SETTINGS: Readonly<TranslationTrainerSettings> = {
 	vocabularySection: '',
 	cefrLevel: 'B1',
 	endpoint: 'http://127.0.0.1:8080/v1',
-	model: 'qwen3-8b',
+	model: SUGGESTED_MODELS[0],
 	timeoutMs: 120_000,
 	schedulerMode: 'active',
 	cadenceMinutes: 30,

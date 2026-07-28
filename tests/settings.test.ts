@@ -5,6 +5,7 @@ import {
 	MAX_EXERCISE_MODAL_WIDTH,
 	mergeSettings,
 	MIN_EXERCISE_MODAL_WIDTH,
+	SUGGESTED_MODELS,
 } from '../src/settings/model';
 import { ApiKeyStore } from '../src/settings/secrets';
 import { DeviceLlmSettingsStore, settingsForVault } from '../src/settings/device';
@@ -13,6 +14,18 @@ import { rankMarkdownNotePaths } from '../src/settings/note-suggestions';
 describe('settings', () => {
 	it('keeps a valid exercise window width', () => {
 		expect(mergeSettings({ exerciseModalWidth: 980 }).exerciseModalWidth).toBe(980);
+	});
+
+	it('offers common models while keeping qwen as the default', () => {
+		expect(SUGGESTED_MODELS).toEqual([
+			'qwen3-8b',
+			'gemma-3-12b-it',
+			'gpt-5.4-mini',
+			'gpt-5.6-luna',
+			'gpt-5.6-terra',
+		]);
+		expect(DEFAULT_SETTINGS.model).toBe('qwen3-8b');
+		expect(mergeSettings({ model: 'custom-model' }).model).toBe('custom-model');
 	});
 
 	it('falls back for widths outside the supported range', () => {

@@ -1,7 +1,14 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 import type { CefrLevel } from '../domain/types';
-import { MAX_EXERCISE_MODAL_WIDTH, MIN_EXERCISE_MODAL_WIDTH, type SchedulerMode, type TranslationTrainerSettings } from './model';
+import {
+	MAX_EXERCISE_MODAL_WIDTH,
+	MIN_EXERCISE_MODAL_WIDTH,
+	SUGGESTED_MODELS,
+	type SchedulerMode,
+	type TranslationTrainerSettings,
+} from './model';
 import { ErrorReporter } from '../ui/error-reporter';
+import { ModelNameSuggest } from './model-suggest';
 import { MarkdownNoteSuggest } from './note-suggest';
 
 export interface SettingsTabActions {
@@ -21,11 +28,13 @@ export interface SettingsTabActions {
 
 export class TranslationTrainerSettingsTab extends PluginSettingTab {
 	private vocabularySuggest?: MarkdownNoteSuggest;
+	private modelSuggest?: ModelNameSuggest;
 
 	constructor(app: App, plugin: Plugin, private readonly actions: SettingsTabActions, private readonly reporter: ErrorReporter) { super(app, plugin); }
 
 	display(): void {
 		this.vocabularySuggest?.close();
+		this.modelSuggest?.close();
 		const { containerEl } = this; containerEl.empty();
 		const settings = this.actions.settings();
 		new Setting(containerEl).setName('Настройки').setHeading();
@@ -54,7 +63,7 @@ export class TranslationTrainerSettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName('Языковая модель').setDesc('Эти параметры сохраняются отдельно на текущем устройстве и не синхронизируются с vault.').setHeading();
 		this.text('Endpoint', 'OpenAI-compatible URL, например http://127.0.0.1:8080/v1.', settings.endpoint, value => this.updateText('endpoint', value));
-		this.text('Модель', 'Имя модели на выбранном endpoint.', settings.model, value => this.updateText('model', value));
+		this.modelName(settings.model);
 		this.text('Timeout', 'Время ожидания ответа в миллисекундах.', settings.timeoutMs, async value => this.updateNumber('timeoutMs', value));
 		let readApiKey = (): string => '';
 		let clearApiKey = (): void => undefined;
@@ -145,7 +154,27 @@ export class TranslationTrainerSettingsTab extends PluginSettingTab {
 	hide(): void {
 		this.vocabularySuggest?.close();
 		this.vocabularySuggest = undefined;
+		this.modelSuggest?.close();
+		this.modelSuggest = undefined;
 		super.hide();
+	}
+
+	private modelName(value: string): void {
+		new Setting(this.containerEl)
+			.setName('Модель')
+			.setDesc('Выберите предложенную модель или введите другое имя вручную.')
+			.addText(text => {
+				text
+					.setPlaceholder('Имя модели')
+					.setValue(value)
+					.onChange(next => this.run(() => this.updateText('model', next)));
+				this.modelSuggest = new ModelNameSuggest(
+					this.app,
+					text.inputEl,
+					SUGGESTED_MODELS,
+					model => { void this.run(() => this.updateText('model', model)); },
+				);
+			});
 	}
 
 	private vocabularyFile(value: string): void {
