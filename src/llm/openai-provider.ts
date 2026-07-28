@@ -2,6 +2,7 @@ import { requestUrl } from 'obsidian';
 import type { ConnectionTestResult, EvaluationRequest, FollowUpRequest, LlmProvider, LlmResult, QuestionGenerationRequest, TranslationEvaluation, TranslationQuestion } from '../domain/types';
 import { EVALUATION_PROMPT_VERSION, FOLLOW_UP_PROMPT_VERSION, GENERATION_PROMPT_VERSION, evaluationSystemPrompt, followUpSystemPrompt, generationSystemPrompt, repairSystemPrompt } from '../prompts';
 import { LlmError, sanitizeError } from './errors';
+import { temperatureForModel } from './model-parameters';
 import { evaluationValidator, generatedQuestionValidator, questionValidator, validatorDiagnostics } from './schemas';
 
 export interface OpenAiCompatibleConfig { baseUrl: string; model: string; apiKey?: string; timeoutMs: number; }
@@ -91,7 +92,7 @@ export class OpenAiCompatibleProvider implements LlmProvider {
 	}
 
 	private async chat(messages: ChatMessage[], responseFormat?: Record<string, unknown>): Promise<string> {
-		const body = await this.request('/chat/completions', 'POST', { model: this.config.model, messages, temperature: 0.2, ...(responseFormat ? { response_format: responseFormat } : {}) });
+		const body = await this.request('/chat/completions', 'POST', { model: this.config.model, messages, temperature: temperatureForModel(this.config.model), ...(responseFormat ? { response_format: responseFormat } : {}) });
 		const content = isRecord(body) && Array.isArray(body.choices) && isRecord(body.choices[0]) && isRecord(body.choices[0].message) ? body.choices[0].message.content : undefined;
 		if (typeof content !== 'string') throw new LlmError('response', 'Сервер вернул некорректный ответ модели.', 'Missing choices[0].message.content.');
 		return content;

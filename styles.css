@@ -1,5 +1,6 @@
 .modal.translation-trainer-modal-shell { max-width: calc(100vw - 32px); width: min(var(--translation-trainer-modal-width, 760px), calc(100vw - 32px)); }
 .translation-trainer-modal { max-width: none; padding-bottom: .25rem; }
+.translation-trainer-modal, .translation-trainer-modal *, .translation-trainer-loading, .translation-trainer-loading *, .translation-trainer-statistics, .translation-trainer-statistics *, .translation-trainer-diagnostics, .translation-trainer-diagnostics * { -webkit-user-select: text; user-select: text; }
 .translation-trainer-modal > h2 { margin-bottom: .65rem; }
 .translation-trainer-source { font-size: 1.15em; font-weight: 600; line-height: 1.55; margin: .45rem 0; }
 .translation-trainer-meta { color: var(--text-muted); font-size: var(--font-ui-small); margin: .35em 0; }
