@@ -1,14 +1,22 @@
 import { App, Component, Modal, Notice } from 'obsidian';
-import type { FollowUpMessage, TranslationEvaluation, TranslationQuestion } from '../domain/types';
+import type {
+	FollowUpMessage,
+	TranslationEvaluation,
+	TranslationQuestion,
+	VocabularyAddition,
+	VocabularyAdditionResult,
+} from '../domain/types';
 import { enhanceButtonMotion } from './button-motion';
 import { ErrorReporter } from './error-reporter';
 import { renderFollowUpView } from './follow-up-view';
 import { renderTranslationResult } from './result-view';
 import { createTokenStream, type TokenStreamAnimation } from './token-stream';
+import { VocabularyEntryEditor } from './vocabulary-entry-editor';
 
 export interface TranslationModalActions {
 	evaluate(question: TranslationQuestion, answer: string, hintUsed: boolean, responseTimeMs: number): Promise<TranslationEvaluation>;
 	askFollowUp(question: TranslationQuestion, answer: string, evaluation: TranslationEvaluation, history: readonly FollowUpMessage[], userQuestion: string): Promise<string>;
+	addVocabulary(additions: readonly VocabularyAddition[]): Promise<VocabularyAdditionResult>;
 	snooze(questionId: string): Promise<void>;
 	next?(): Promise<TranslationQuestion | undefined>;
 	onClose?(): void;
@@ -30,6 +38,7 @@ export class TranslationModal extends Modal {
 	private submitting = false;
 	private showTopics = false;
 	private showVocabulary = false;
+	private showVocabularyEditor = false;
 	private shownAt = Date.now();
 	private tokenStream?: TokenStreamAnimation;
 	private removeOutsideClickGuard?: () => void;
@@ -38,10 +47,15 @@ export class TranslationModal extends Modal {
 	private followUpDiagnostic?: string;
 	private askingFollowUp = false;
 	private markdownComponent?: Component;
+	private readonly vocabularyEntryEditor: VocabularyEntryEditor;
 
 	constructor(app: App, private readonly options: TranslationModalOptions) {
 		super(app);
 		this.question = options.question;
+		this.vocabularyEntryEditor = new VocabularyEntryEditor(
+			(additions) => options.actions.addVocabulary(additions),
+			options.reporter,
+		);
 	}
 
 	onOpen(): void { applyModalWidth(this.modalEl, this.options.widthPx); this.removeOutsideClickGuard = guardAgainstOutsideClick(this.containerEl, this.modalEl); this.render(); }
@@ -61,8 +75,11 @@ export class TranslationModal extends Modal {
 		vocabularyButton.addEventListener('click', () => { this.showVocabulary = !this.showVocabulary; this.render(); });
 		const topicButton = enhanceButtonMotion(reveals.createEl('button', { text: this.showTopics ? 'Скрыть тему' : 'Показать тему' }));
 		topicButton.addEventListener('click', () => { this.showTopics = !this.showTopics; this.render(); });
+		const addVocabularyButton = enhanceButtonMotion(reveals.createEl('button', { text: this.showVocabularyEditor ? 'Скрыть добавление' : 'Добавить слова' }));
+		addVocabularyButton.addEventListener('click', () => { this.showVocabularyEditor = !this.showVocabularyEditor; this.render(); });
 		if (this.showVocabulary) contentEl.createEl('p', { text: `Слова: ${this.question.targetVocabulary.join(', ') || '—'}`, cls: 'translation-trainer-hint-panel' });
 		if (this.showTopics) contentEl.createEl('p', { text: `Темы: ${this.question.topics.join(', ') || '—'}`, cls: 'translation-trainer-hint-panel' });
+		if (this.showVocabularyEditor) this.vocabularyEntryEditor.render(contentEl);
 
 		if (!this.evaluation) this.renderEditor(contentEl);
 		else this.renderResult(contentEl, this.evaluation);
@@ -166,7 +183,7 @@ export class TranslationModal extends Modal {
 		try {
 			const next = await this.options.actions.next();
 			if (!next) { new Notice('Больше заданий пока нет.'); this.close(); return; }
-			this.question = next; this.answer = ''; this.evaluation = undefined; this.technicalDetails = undefined; this.showTopics = false; this.showVocabulary = false; this.followUpDraft = ''; this.followUpMessages = []; this.followUpDiagnostic = undefined; this.shownAt = Date.now();
+			this.question = next; this.answer = ''; this.evaluation = undefined; this.technicalDetails = undefined; this.showTopics = false; this.showVocabulary = false; this.showVocabularyEditor = false; this.followUpDraft = ''; this.followUpMessages = []; this.followUpDiagnostic = undefined; this.shownAt = Date.now();
 		} catch (error) { this.options.reporter.report(error, 'Не удалось загрузить следующее задание.'); }
 		finally { this.submitting = false; if (this.modalEl.isConnected) this.render(); }
 	}

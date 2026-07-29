@@ -23,6 +23,16 @@ export interface VocabularyEntry {
 	sourcePath: string;
 }
 
+export interface VocabularyAddition {
+	displayTerm: string;
+	translation: string;
+}
+
+export interface VocabularyAdditionResult {
+	added: VocabularyAddition[];
+	skippedDuplicates: string[];
+}
+
 export interface GrammarTopic {
 	id: string;
 	level: CefrLevel;

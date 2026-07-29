@@ -4,6 +4,8 @@ import type {
 	TranslationAttempt,
 	TranslationEvaluation,
 	TranslationQuestion,
+	VocabularyAddition,
+	VocabularyAdditionResult,
 } from './domain/types';
 import { ATTEMPT_SCHEMA_VERSION } from './domain/constants';
 import { DiagnosticLog } from './diagnostics';
@@ -293,6 +295,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 				actions: {
 					evaluate: (current, answer, hintUsed, responseTimeMs) => this.evaluateAnswer(current, answer, hintUsed, responseTimeMs),
 					askFollowUp: async (current, answer, evaluation, history, userQuestion) => (await this.provider.answerFollowUp({ question: current, userAnswer: answer, evaluation, history: [...history], userQuestion })).data,
+					addVocabulary: (additions) => this.addVocabulary(additions),
 					snooze: (questionId) => this.snooze(questionId),
 					next: sessionMode ? () => this.nextSessionQuestion() : undefined,
 					onClose: () => { this.modalOpen = false; this.sessionQueue = []; },
@@ -307,6 +310,25 @@ export default class TranslationTrainerPlugin extends Plugin {
 			loading.finish();
 			if (!exerciseOpened) this.modalOpen = false;
 		}
+	}
+
+	private async addVocabulary(additions: readonly VocabularyAddition[]): Promise<VocabularyAdditionResult> {
+		if (!isVocabularyConfigured(this.data.settings)) {
+			throw userError('Сначала выберите заметку со словами в настройках плагина.');
+		}
+		const result = await this.vocabulary.addEntries(
+			this.data.settings.vocabularyPath,
+			this.data.settings.vocabularySection,
+			additions,
+		);
+		if (result.added.length) {
+			if (this.reindexTimer !== undefined) {
+				window.clearTimeout(this.reindexTimer);
+				this.reindexTimer = undefined;
+			}
+			await this.safeReindexVocabulary();
+		}
+		return result;
 	}
 
 	private async nextAdaptiveQuestion(allowEarlyReview: boolean): Promise<TranslationQuestion> {

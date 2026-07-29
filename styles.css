@@ -7,6 +7,12 @@
 .translation-trainer-reveals { display: flex; flex-wrap: wrap; gap: .5rem; margin: .85rem 0 .5rem; }
 .translation-trainer-reveals button { color: var(--text-muted); font-size: var(--font-ui-smaller); }
 .translation-trainer-hint-panel { background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); margin: .5rem 0; padding: .65rem .8rem; }
+.translation-trainer-vocabulary-editor { background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-l); margin: .75rem 0; padding: .8rem .9rem; }
+.translation-trainer-vocabulary-entry-rows { display: grid; gap: .5rem; }
+.translation-trainer-vocabulary-entry-row { display: grid; gap: .55rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.translation-trainer-vocabulary-entry-row input { box-sizing: border-box; min-width: 0; width: 100%; }
+.translation-trainer-vocabulary-entry-controls { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: .7rem; }
+.translation-trainer-vocabulary-entry-status { color: var(--color-green); line-height: 1.45; margin: .65rem 0 0; }
 .translation-trainer-answer { box-sizing: border-box; display: block; line-height: 1.55; margin: 1em 0; min-height: 8rem; padding: .75rem; resize: vertical; width: 100%; }
 .translation-trainer-controls, .translation-trainer-filters { display: flex; flex-wrap: wrap; gap: .6em; margin: 1.15em 0 .5em; }
 .translation-trainer-interactive-button { --translation-trainer-tilt-x: 0deg; --translation-trainer-tilt-y: 0deg; transform: perspective(420px) translateY(0) scale(1) rotateX(0) rotateY(0); transform-origin: center; transition: box-shadow 160ms ease, filter 160ms ease, transform 160ms cubic-bezier(.2, .8, .2, 1); will-change: transform; }
