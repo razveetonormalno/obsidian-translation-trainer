@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	DEFAULT_SETTINGS,
+	EXERCISE_DISPLAY_MODE_OPTIONS,
 	isVocabularyConfigured,
 	MAX_EXERCISE_MODAL_WIDTH,
 	mergeSettings,
@@ -14,6 +15,13 @@ import { rankMarkdownNotePaths } from '../src/settings/note-suggestions';
 describe('settings', () => {
 	it('keeps a valid exercise window width', () => {
 		expect(mergeSettings({ exerciseModalWidth: 980 }).exerciseModalWidth).toBe(980);
+	});
+
+	it('uses a modal by default and accepts the sidebar display mode', () => {
+		expect(EXERCISE_DISPLAY_MODE_OPTIONS.map((option) => option.id)).toEqual(['modal', 'sidebar']);
+		expect(DEFAULT_SETTINGS.exerciseDisplayMode).toBe('modal');
+		expect(mergeSettings({ exerciseDisplayMode: 'sidebar' }).exerciseDisplayMode).toBe('sidebar');
+		expect(mergeSettings({ exerciseDisplayMode: 'unknown' }).exerciseDisplayMode).toBe('modal');
 	});
 
 	it('offers common models while keeping qwen as the default', () => {

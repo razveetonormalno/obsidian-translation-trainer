@@ -1,9 +1,11 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 import type { CefrLevel } from '../domain/types';
 import {
+	EXERCISE_DISPLAY_MODE_OPTIONS,
 	MAX_EXERCISE_MODAL_WIDTH,
 	MIN_EXERCISE_MODAL_WIDTH,
 	SUGGESTED_MODELS,
+	type ExerciseDisplayMode,
 	type SchedulerMode,
 	type TranslationTrainerSettings,
 } from './model';
@@ -22,6 +24,7 @@ export interface SettingsTabActions {
 	reindexVocabulary(): Promise<{ count: number }>;
 	getVocabularyDiagnostics(): Promise<readonly { displayTerm: string; translation: string }[]>;
 	startExercise(): Promise<void>;
+	openTranslationPanel(): Promise<void>;
 	openStatistics(): Promise<void>;
 	togglePause(): Promise<void>;
 }
@@ -48,8 +51,17 @@ export class TranslationTrainerSettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName('Интерфейс').setHeading();
 		new Setting(containerEl)
+			.setName('Показывать упражнения')
+			.setDesc('Окно появляется поверх заметок. Боковую панель можно закрепить и перемещать как календарь или структуру файла.')
+			.addDropdown(dropdown => {
+				for (const option of EXERCISE_DISPLAY_MODE_OPTIONS) dropdown.addOption(option.id, option.label);
+				dropdown
+					.setValue(settings.exerciseDisplayMode)
+					.onChange(value => this.run(() => this.actions.update({ exerciseDisplayMode: value as ExerciseDisplayMode })));
+			});
+		new Setting(containerEl)
 			.setName('Ширина окна упражнения')
-			.setDesc('Ширина окна в пикселях. На небольшом экране она автоматически уменьшается.')
+			.setDesc('Используется только для режима окна. На небольшом экране ширина автоматически уменьшается.')
 			.addSlider(slider => slider
 				.setLimits(MIN_EXERCISE_MODAL_WIDTH, MAX_EXERCISE_MODAL_WIDTH, 20)
 				.setValue(settings.exerciseModalWidth)
@@ -126,6 +138,7 @@ export class TranslationTrainerSettingsTab extends PluginSettingTab {
 		this.button('Переиндексировать слова', 'Повторно прочитать заметку со словами.', async () => { const result = await this.actions.reindexVocabulary(); new Notice(`Найдено слов: ${result.count}.`); });
 		this.button('Показать слова', 'Диагностика распознанных записей.', async () => { const items = await this.actions.getVocabularyDiagnostics(); const list = containerEl.querySelector('.translation-trainer-diagnostics') ?? containerEl.createDiv({ cls: 'translation-trainer-diagnostics' }); list.empty(); list.createEl('p', { text: `Распознано: ${items.length}` }); const ul = list.createEl('ul'); for (const item of items.slice(0, 100)) ul.createEl('li', { text: `${item.displayTerm} — ${item.translation}` }); });
 		this.button('Начать упражнение', 'Открыть следующее задание прямо сейчас.', () => this.actions.startExercise());
+		this.button('Открыть панель переводов', 'Открыть закрепляемую панель, которую можно перемещать в раскладке Obsidian.', () => this.actions.openTranslationPanel());
 		this.button('Открыть статистику', 'Показать графики и рейтинги.', () => this.actions.openStatistics());
 		this.button(settings.paused ? 'Возобновить расписание' : 'Приостановить расписание', 'Временная остановка автоматических заданий.', () => this.actions.togglePause());
 

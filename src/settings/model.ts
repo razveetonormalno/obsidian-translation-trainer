@@ -1,6 +1,16 @@
 import type { CefrLevel } from '../domain/types';
 
 export type SchedulerMode = 'active' | 'background';
+export type ExerciseDisplayMode = 'modal' | 'sidebar';
+
+export const EXERCISE_DISPLAY_MODE_OPTIONS: readonly {
+	id: ExerciseDisplayMode;
+	label: string;
+	description: string;
+}[] = [
+	{ id: 'modal', label: 'В окне поверх заметок', description: 'Каждое упражнение открывается в отдельном окне.' },
+	{ id: 'sidebar', label: 'В боковой панели', description: 'Упражнения остаются в закрепляемом виджете Obsidian.' },
+];
 
 export const MIN_EXERCISE_MODAL_WIDTH = 520;
 export const MAX_EXERCISE_MODAL_WIDTH = 1200;
@@ -25,6 +35,7 @@ export interface TranslationTrainerSettings {
 	quietHoursStart: string;
 	quietHoursEnd: string;
 	dailyAutomaticLimit: number;
+	exerciseDisplayMode: ExerciseDisplayMode;
 	exerciseModalWidth: number;
 	paused: boolean;
 }
@@ -42,6 +53,7 @@ export const DEFAULT_SETTINGS: Readonly<TranslationTrainerSettings> = {
 	quietHoursStart: '23:00',
 	quietHoursEnd: '09:00',
 	dailyAutomaticLimit: 10,
+	exerciseDisplayMode: EXERCISE_DISPLAY_MODE_OPTIONS[0]!.id,
 	exerciseModalWidth: 760,
 	paused: false,
 };
@@ -62,6 +74,7 @@ export function mergeSettings(value: unknown): TranslationTrainerSettings {
 		quietHoursStart: timeOr(candidate.quietHoursStart, DEFAULT_SETTINGS.quietHoursStart),
 		quietHoursEnd: timeOr(candidate.quietHoursEnd, DEFAULT_SETTINGS.quietHoursEnd),
 		dailyAutomaticLimit: positiveIntegerOr(candidate.dailyAutomaticLimit, DEFAULT_SETTINGS.dailyAutomaticLimit),
+		exerciseDisplayMode: candidate.exerciseDisplayMode === 'sidebar' ? 'sidebar' : 'modal',
 		exerciseModalWidth: boundedIntegerOr(candidate.exerciseModalWidth, DEFAULT_SETTINGS.exerciseModalWidth, MIN_EXERCISE_MODAL_WIDTH, MAX_EXERCISE_MODAL_WIDTH),
 		paused: typeof candidate.paused === 'boolean' ? candidate.paused : DEFAULT_SETTINGS.paused,
 	};

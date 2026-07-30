@@ -30,6 +30,7 @@ import {
 	pickDeviceLlmSettings,
 	settingsForVault,
 	type DeviceLlmSettings,
+	type ExerciseDisplayMode,
 } from './settings';
 import {
 	type SettingsTabActions,
@@ -48,10 +49,14 @@ import {
 } from './statistics';
 import {
 	ErrorReporter,
+	ExerciseDisplayModeModal,
 	LoadingModal,
 	STATISTICS_VIEW_TYPE,
 	StatisticsView,
+	TRANSLATION_VIEW_TYPE,
 	TranslationModal,
+	TranslationView,
+	type TranslationExerciseOptions,
 } from './ui';
 import { VocabularyService } from './vocabulary/service';
 
@@ -69,7 +74,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 	private scheduler!: ReviewScheduler;
 	private reporter = new ErrorReporter();
 	private diagnosticLog!: DiagnosticLog;
-	private modalOpen = false;
+	private exerciseOpen = false;
 	private sessionQueue: TranslationQuestion[] = [];
 	private reindexTimer?: number;
 	private vocabularyRevision = 0;
@@ -105,6 +110,12 @@ export default class TranslationTrainerPlugin extends Plugin {
 				drilldownTopic: (id) => this.statistics.drilldownTopic(id),
 			}),
 		);
+		this.registerView(
+			TRANSLATION_VIEW_TYPE,
+			(leaf) => new TranslationView(leaf, {
+				startExercise: async () => { await this.openExercise(true, false, 'sidebar'); },
+			}),
+		);
 		this.addSettingTab(new TranslationTrainerSettingsTab(this.app, this, this.settingsActions(), this.reporter));
 		this.registerCommands();
 
@@ -115,7 +126,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 				this.data.scheduler = state;
 				await this.savePluginData();
 			},
-			isModalOpen: () => this.modalOpen,
+			isModalOpen: () => this.exerciseOpen,
 			isAppActive: () => activeDocument.visibilityState === 'visible' && activeDocument.hasFocus(),
 			showAutomaticExercise: () => this.openExercise(false, false),
 		});
@@ -152,6 +163,22 @@ export default class TranslationTrainerPlugin extends Plugin {
 			id: 'open-statistics',
 			name: 'Открыть статистику',
 			callback: () => void this.openStatistics(),
+		});
+		this.addCommand({
+			id: 'open-translation-panel',
+			name: 'Открыть панель переводов',
+			callback: () => void this.openTranslationPanel()
+				.catch((error: unknown) => this.reporter.report(error, 'Не удалось открыть панель переводов.')),
+		});
+		this.addCommand({
+			id: 'choose-exercise-display-mode',
+			name: 'Выбрать режим показа переводов',
+			callback: () => new ExerciseDisplayModeModal(
+				this.app,
+				this.data.settings.exerciseDisplayMode,
+				(mode) => void this.setExerciseDisplayMode(mode)
+					.catch((error: unknown) => this.reporter.report(error, 'Не удалось изменить режим показа переводов.')),
+			).open(),
 		});
 		this.addCommand({
 			id: 'toggle-pause',
@@ -251,27 +278,39 @@ export default class TranslationTrainerPlugin extends Plugin {
 		this.vocabulary.clear();
 	}
 
-	private async openExercise(manual: boolean, sessionMode: boolean): Promise<boolean> {
+	private async openExercise(
+		manual: boolean,
+		sessionMode: boolean,
+		displayMode = this.data.settings.exerciseDisplayMode,
+	): Promise<boolean> {
 		const questions = this.questions;
 		if (!questions) {
 			if (manual) new Notice('Сначала выберите заметку со словами в настройках плагина.');
 			return false;
 		}
-		if (this.modalOpen) {
-			if (manual) new Notice('Окно упражнения уже открыто.');
+		if (this.exerciseOpen) {
+			if (manual) new Notice('Упражнение уже открыто.');
 			return false;
 		}
-		this.modalOpen = true;
+		this.exerciseOpen = true;
 		let exerciseOpened = false;
 		let cancelled = false;
-		const loading = new LoadingModal(
-			this.app,
-			sessionMode ? 'Готовим сессию повторения…' : 'Готовим задание…',
-			() => { cancelled = true; },
-			this.data.settings.exerciseModalWidth,
-		);
-		loading.open();
+		let loadingModal: LoadingModal | undefined;
+		let translationView: TranslationView | undefined;
+		const loadingText = sessionMode ? 'Готовим сессию повторения…' : 'Готовим задание…';
 		try {
+			if (displayMode === 'sidebar') {
+				translationView = await this.openTranslationPanel();
+				translationView.showLoading(loadingText, () => { cancelled = true; });
+			} else {
+				loadingModal = new LoadingModal(
+					this.app,
+					loadingText,
+					() => { cancelled = true; },
+					this.data.settings.exerciseModalWidth,
+				);
+				loadingModal.open();
+			}
 			let question: TranslationQuestion | undefined;
 			if (sessionMode) {
 				const all = await questions.allQuestions();
@@ -286,29 +325,38 @@ export default class TranslationTrainerPlugin extends Plugin {
 			}
 			if (cancelled) return false;
 			await this.markQuestionForDisplay(question, manual);
-			loading.finish();
-			new TranslationModal(this.app, {
+			loadingModal?.finish();
+			translationView?.finishLoading();
+			const exerciseOptions: TranslationExerciseOptions = {
 				question,
-				sessionMode,
-				widthPx: this.data.settings.exerciseModalWidth,
 				reporter: this.reporter,
 				actions: {
 					evaluate: (current, answer, hintUsed, responseTimeMs) => this.evaluateAnswer(current, answer, hintUsed, responseTimeMs),
 					askFollowUp: async (current, answer, evaluation, history, userQuestion) => (await this.provider.answerFollowUp({ question: current, userAnswer: answer, evaluation, history: [...history], userQuestion })).data,
 					addVocabulary: (additions) => this.addVocabulary(additions),
 					snooze: (questionId) => this.snooze(questionId),
-					next: sessionMode ? () => this.nextSessionQuestion() : undefined,
-					onClose: () => { this.modalOpen = false; this.sessionQueue = []; },
+					next: sessionMode ? () => this.nextSessionQuestion() : () => this.nextRegularQuestion(),
+					onClose: () => { this.exerciseOpen = false; this.sessionQueue = []; },
 				},
-			}).open();
+			};
+			if (displayMode === 'sidebar') {
+				translationView ??= await this.openTranslationPanel();
+				translationView.showExercise(exerciseOptions);
+			} else {
+				new TranslationModal(this.app, {
+					...exerciseOptions,
+					widthPx: this.data.settings.exerciseModalWidth,
+				}).open();
+			}
 			exerciseOpened = true;
 			return true;
 		} catch (error) {
 			this.reporter.report(error, 'Не удалось открыть упражнение.');
 			return false;
 		} finally {
-			loading.finish();
-			if (!exerciseOpened) this.modalOpen = false;
+			loadingModal?.finish();
+			translationView?.finishLoading();
+			if (!exerciseOpened) this.exerciseOpen = false;
 		}
 	}
 
@@ -351,6 +399,12 @@ export default class TranslationTrainerPlugin extends Plugin {
 	private async nextSessionQuestion(): Promise<TranslationQuestion | undefined> {
 		const question = this.sessionQueue.shift();
 		if (question) await this.markQuestionForDisplay(question, true);
+		return question;
+	}
+
+	private async nextRegularQuestion(): Promise<TranslationQuestion> {
+		const question = await this.nextAdaptiveQuestion(true);
+		await this.markQuestionForDisplay(question, true);
 		return question;
 	}
 
@@ -423,6 +477,27 @@ export default class TranslationTrainerPlugin extends Plugin {
 		await this.app.workspace.revealLeaf(leaf);
 	}
 
+	private async openTranslationPanel(): Promise<TranslationView> {
+		const existing = this.app.workspace.getLeavesOfType(TRANSLATION_VIEW_TYPE)[0];
+		const leaf = existing ?? this.app.workspace.getRightLeaf(true);
+		if (!leaf) throw userError('Не удалось открыть боковую панель переводов.');
+		if (!existing) await leaf.setViewState({ type: TRANSLATION_VIEW_TYPE, active: true });
+		await this.app.workspace.revealLeaf(leaf);
+		if (!(leaf.view instanceof TranslationView)) {
+			throw userError('Не удалось подготовить боковую панель переводов.');
+		}
+		return leaf.view;
+	}
+
+	private async setExerciseDisplayMode(mode: ExerciseDisplayMode): Promise<void> {
+		this.data.settings.exerciseDisplayMode = mode;
+		await this.savePluginData();
+		if (mode === 'sidebar') await this.openTranslationPanel();
+		new Notice(mode === 'sidebar'
+			? 'Новые переводы будут открываться в боковой панели.'
+			: 'Новые переводы будут открываться в окне поверх заметок.');
+	}
+
 	private settingsActions(): SettingsTabActions {
 		return {
 			settings: () => this.data.settings,
@@ -460,6 +535,7 @@ export default class TranslationTrainerPlugin extends Plugin {
 			},
 			getVocabularyDiagnostics: async () => this.vocabulary.entries.map(({ displayTerm, translation }) => ({ displayTerm, translation })),
 			startExercise: async () => { await this.openExercise(true, false); },
+			openTranslationPanel: async () => { await this.openTranslationPanel(); },
 			openStatistics: () => this.openStatistics(),
 			togglePause: () => this.togglePause(),
 		};

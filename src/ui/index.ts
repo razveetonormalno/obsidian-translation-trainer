@@ -1,6 +1,10 @@
 export { ErrorReporter } from './error-reporter';
 export type { ErrorLogSink } from './error-reporter';
+export { ExerciseDisplayModeModal } from './display-mode-modal';
 export { LoadingModal, TranslationModal } from './translation-modal';
 export type { TranslationModalActions, TranslationModalOptions } from './translation-modal';
+export type { TranslationExerciseActions, TranslationExerciseOptions } from './translation-exercise';
+export { TRANSLATION_VIEW_TYPE, TranslationView } from './translation-view';
+export type { TranslationViewActions } from './translation-view';
 export { STATISTICS_VIEW_TYPE, StatisticsView } from './statistics-view';
 export type { StatisticsViewActions } from './statistics-view';

@@ -6,6 +6,12 @@ import { describe, expect, it } from 'vitest';
 describe('plugin styles', () => {
 	it('allows users to select and copy all rendered plugin text', () => {
 		const css = readFileSync(resolve(cwd(), 'styles.css'), 'utf8');
-		expect(css).toContain('.translation-trainer-modal, .translation-trainer-modal *, .translation-trainer-loading, .translation-trainer-loading *, .translation-trainer-statistics, .translation-trainer-statistics *, .translation-trainer-diagnostics, .translation-trainer-diagnostics * { -webkit-user-select: text; user-select: text; }');
+		expect(css).toContain('.translation-trainer-exercise, .translation-trainer-exercise *, .translation-trainer-loading, .translation-trainer-loading *, .translation-trainer-statistics, .translation-trainer-statistics *, .translation-trainer-diagnostics, .translation-trainer-diagnostics * { -webkit-user-select: text; user-select: text; }');
+	});
+
+	it('adapts exercise results to the narrow translation view', () => {
+		const css = readFileSync(resolve(cwd(), 'styles.css'), 'utf8');
+		expect(css).toContain('.translation-trainer-translation-view .translation-trainer-answer-grid');
+		expect(css).toContain('grid-template-columns: 1fr;');
 	});
 });
