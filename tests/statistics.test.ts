@@ -3,13 +3,13 @@ import { buildStatisticsSnapshot, drilldownByTopic, drilldownByWord, filterAttem
 import { attempt, question } from './helpers';
 
 describe('statistics aggregation', () => {
-	it('computes EMA alpha .2, requires three samples for rankings and handles empty data', () => {
+	it('computes EMA alpha .2, includes provisional rankings and handles empty data', () => {
 		const records = [attempt('1', '2026-07-18T00:00:00Z', 0), attempt('2', '2026-07-19T00:00:00Z', 100), attempt('3', '2026-07-20T00:00:00Z', 100), attempt('4', '2026-07-20T01:00:00Z', 20, 'future', 'rare')];
 		const snapshot = buildStatisticsSnapshot(records, { period: 'all', now: new Date('2026-07-21T00:00:00Z') });
 		const purpose = snapshot.wordRankings.find((entry) => entry.id === 'purpose');
 		expect(purpose?.emaScore).toBeCloseTo(36, 8);
-		expect(snapshot.easiestWords.map((entry) => entry.id)).toEqual(['purpose']);
-		expect(snapshot.hardestWords.map((entry) => entry.id)).toEqual(['purpose']);
+		expect(snapshot.easiestWords.map((entry) => entry.id)).toEqual(['purpose', 'rare']);
+		expect(snapshot.hardestWords.map((entry) => entry.id)).toEqual(['rare', 'purpose']);
 		expect(buildStatisticsSnapshot([], { period: 'all' }).empty).toBe(true);
 	});
 

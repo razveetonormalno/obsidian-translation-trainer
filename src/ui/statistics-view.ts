@@ -1,4 +1,5 @@
 import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { STATISTICS_MIN_SAMPLE } from '../domain/constants';
 import type { AttemptDrilldown, StatisticsPeriod, StatisticsSnapshot } from '../statistics/types';
 
 export const STATISTICS_VIEW_TYPE = 'translation-trainer-statistics';
@@ -71,7 +72,13 @@ export class StatisticsView extends ItemView {
 
 	private renderRanking(root: HTMLElement, title: string, items: StatisticsSnapshot['easiestWords'], kind: 'word' | 'topic'): void {
 		root.createEl('h3', { text: title });
-		if (!items.length) { root.createEl('p', { text: 'Нужно минимум три попытки для рейтинга.' }); return; }
+		if (!items.length) { root.createEl('p', { text: 'Пока нет оценённых элементов.' }); return; }
+		if (items.some((item) => item.attemptCount < STATISTICS_MIN_SAMPLE)) {
+			root.createEl('p', {
+				text: 'Предварительный рейтинг: для устойчивого результата нужно минимум три попытки на элемент.',
+				cls: 'translation-trainer-meta',
+			});
+		}
 		const table = root.createEl('table', { cls: 'translation-trainer-ranking' });
 		const header = table.createEl('thead').createEl('tr'); for (const value of ['Элемент', 'Средний score', 'Попытки']) header.createEl('th', { text: value });
 		const body = table.createEl('tbody'); for (const item of items.slice(0, 10)) { const row = body.createEl('tr'); const button = row.createEl('td').createEl('button', { text: item.label }); button.addEventListener('click', () => this.showDrilldown(item.label, kind === 'word' ? this.actions.drilldownWord(item.id) : this.actions.drilldownTopic(item.id))); row.createEl('td', { text: String(Math.round(item.averageScore)) }); row.createEl('td', { text: String(item.attemptCount) }); }

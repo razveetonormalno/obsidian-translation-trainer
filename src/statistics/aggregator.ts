@@ -1,4 +1,4 @@
-import { EMA_ALPHA, STATISTICS_MIN_SAMPLE } from '../domain/constants';
+import { EMA_ALPHA } from '../domain/constants';
 import type { TranslationAttempt, TranslationQuestion } from '../domain/types';
 import type { SelectionStatistics } from '../questions/types';
 import {
@@ -151,7 +151,7 @@ function toRankingItems(items: ReadonlyMap<string, MutableAggregate>): Statistic
 }
 
 function ranked(items: readonly StatisticsRankingItem[], direction: 'high' | 'low'): StatisticsRankingItem[] {
-	return items.filter((item) => item.attemptCount >= STATISTICS_MIN_SAMPLE).slice().sort((left, right) => {
+	return items.slice().sort((left, right) => {
 		const delta = direction === 'high' ? right.emaScore - left.emaScore : left.emaScore - right.emaScore;
 		return delta || stableItemOrder(left, right);
 	}).slice(0, 10);
